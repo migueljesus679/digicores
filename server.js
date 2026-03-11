@@ -12,7 +12,7 @@ const nodemailer = require('nodemailer');
 const path = require('path');
 
 // Email de destino (onde chegam as mensagens do formulário)
-const CONTACT_EMAIL = process.env.CONTACT_EMAIL || 'contasegura@gmail.com';
+const CONTACT_EMAIL = process.env.CONTACT_EMAIL || 'coontasegura@gmail.com';
 const EMAIL_PASS    = process.env.EMAIL_PASS;     // App Password do Gmail (variável de ambiente)
 require('dotenv').config();
 
