@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carrinho - DigiCores</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="header">
+  <div class="container">
+    <div class="header-inner">
+      <a href="index.html" class="logo">Digi<span>Cores</span></a>
+      <nav class="nav">
+        <a href="index.html">Início</a>
+        <a href="produtos.html">Produtos</a>
+      </nav>
+      <div class="header-actions">
+        <a href="carrinho.html" class="cart-btn" style="background:var(--primary);color:#fff;">
+          🛒 Carrinho <span class="cart-count" id="cartCount">0</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="cart-page">
+  <div class="container">
+    <div class="page-header">
+      <h1>🛒 O Meu Carrinho</h1>
+    </div>
+
+    <div id="cartContent"></div>
+  </div>
+</div>
+
+<!-- Order Success Modal -->
+<div class="overlay" id="successOverlay">
+  <div class="dialog" style="text-align:center;">
+    <div style="font-size:60px;margin-bottom:16px;">🎉</div>
+    <h3>Encomenda Recebida!</h3>
+    <p style="margin-bottom:8px;">A sua encomenda foi registada com sucesso. A nossa equipa irá contactá-lo em breve para confirmar os detalhes.</p>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px;">Ref: #DC-<span id="orderRef"></span></p>
+    <div class="dialog-actions" style="justify-content:center;">
+      <a href="produtos.html" class="btn btn-primary">Continuar a Comprar</a>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-bottom" style="border-top:none;padding:24px 0;">
+      <span>© 2024 DigiCores. Todos os direitos reservados.</span>
+      <a href="produtos.html">← Continuar a Comprar</a>
+    </div>
+  </div>
+</footer>
+
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  function updateCartCount() {
+    document.getElementById('cartCount').textContent = DigiDB.getCart().length;
+  }
+
+  function formatSelections(sel) {
+    if (!sel) return '';
+    return Object.entries(sel)
+      .filter(([k, v]) => v !== null && v !== undefined && v !== '')
+      .map(([k, v]) => {
+        const labels = {
+          quantity: 'Qtd', size: 'Tamanho', paper: 'Papel', sides: 'Impressão',
+          finish: 'Acabamento', corners: 'Cantos', fold: 'Dobra', window: 'Janela',
+          material: 'Material', shape: 'Forma', model: 'Modelo', width: 'Larg.',
+          height: 'Alt.', accessories: 'Acessórios', technique: 'Técnica',
+          printType: 'Área', fabric: 'Tecido', type: 'Tipo', color: 'Cor'
+        };
+        return `<span style="display:inline-block;background:var(--bg);border-radius:4px;padding:2px 6px;margin:2px;font-size:11px;">${labels[k] || k}: ${v}</span>`;
+      }).join('');
+  }
+
+  function renderCart() {
+    const cart = DigiDB.getCart();
+    const content = document.getElementById('cartContent');
+
+    if (cart.length === 0) {
+      content.innerHTML = `
+        <div class="cart-empty">
+          <div class="icon">🛒</div>
+          <h2>O carrinho está vazio</h2>
+          <p>Ainda não adicionou nenhum produto ao carrinho.</p>
+          <a href="produtos.html" class="btn btn-primary">Descobrir Produtos</a>
+        </div>`;
+      return;
+    }
+
+    const total = cart.reduce((sum, item) => sum + item.price, 0);
+    const iva = total * 0.23;
+    const totalWithIVA = total + iva;
+    const shipping = total >= 75 ? 0 : 5.90;
+
+    content.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:32px;align-items:start;">
+        <div>
+          <div class="admin-card">
+            <table class="cart-table">
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th>Opções</th>
+                  <th>Preço (s/IVA)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="cartTableBody">
+                ${cart.map(item => `
+                  <tr>
+                    <td>
+                      <div class="cart-item-product">
+                        <img src="${item.productImage}" alt="${item.productName}" class="cart-item-img"
+                             onerror="this.src='https://placehold.co/60x60/f0f2f5/999?text=?'">
+                        <div>
+                          <div class="cart-item-name">
+                            <a href="produto.html?id=${item.productId}" style="color:var(--dark);">${item.productName}</a>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td><div class="cart-item-opts">${formatSelections(item.selections)}</div></td>
+                    <td><strong>€${item.price.toFixed(2)}</strong></td>
+                    <td>
+                      <button class="remove-btn" onclick="removeItem(${item.cartId})" title="Remover">✕</button>
+                    </td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div style="margin-top:16px;display:flex;gap:12px;">
+            <a href="produtos.html" class="btn btn-ghost">← Continuar a Comprar</a>
+            <button class="btn btn-ghost btn-sm" onclick="clearAllCart()">🗑️ Limpar Carrinho</button>
+          </div>
+        </div>
+
+        <div class="cart-summary">
+          <h3>Resumo da Encomenda</h3>
+          <div class="summary-row">
+            <span>Subtotal (${cart.length} item${cart.length !== 1 ? 's' : ''})</span>
+            <span>€${total.toFixed(2)}</span>
+          </div>
+          <div class="summary-row">
+            <span>IVA (23%)</span>
+            <span>€${iva.toFixed(2)}</span>
+          </div>
+          <div class="summary-row">
+            <span>Envio</span>
+            <span>${shipping === 0 ? '<span style="color:var(--success)">Grátis</span>' : `€${shipping.toFixed(2)}`}</span>
+          </div>
+          ${total < 75 ? `<div style="font-size:12px;color:var(--text-muted);padding:8px 0;border-bottom:1px solid var(--border);">Falta €${(75 - total).toFixed(2)} para envio grátis</div>` : ''}
+          <div class="summary-total">
+            <span>Total</span>
+            <span>€${(totalWithIVA + shipping).toFixed(2)}</span>
+          </div>
+          <a href="checkout.html" class="btn btn-primary btn-block btn-lg mt-3">
+            🔒 Finalizar Encomenda →
+          </a>
+          <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--text-muted);">
+            🔒 Pagamento seguro • 🚚 Entrega em 3-5 dias úteis
+          </div>
+          <div style="margin-top:16px;padding:12px;background:var(--bg-2);border-radius:var(--radius);font-size:12px;display:flex;gap:8px;flex-wrap:wrap;">
+            <span>💳 Cartão</span>
+            <span>📱 MB WAY</span>
+            <span>🏧 Multibanco</span>
+            <span>🅿️ PayPal</span>
+            <span>🏦 Transferência</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function removeItem(cartId) {
+    DigiDB.removeFromCart(cartId);
+    updateCartCount();
+    renderCart();
+  }
+
+  function clearAllCart() {
+    if (confirm('Tem a certeza que quer limpar o carrinho?')) {
+      DigiDB.clearCart();
+      updateCartCount();
+      renderCart();
+    }
+  }
+
+  function checkout() {
+    const ref = Math.floor(Math.random() * 90000) + 10000;
+    document.getElementById('orderRef').textContent = ref;
+    document.getElementById('successOverlay').classList.add('open');
+    DigiDB.clearCart();
+    updateCartCount();
+  }
+
+  // Init
+  updateCartCount();
+  renderCart();
+</script>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Produtos - DigiCores</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="header">
+  <div class="container">
+    <div class="header-inner">
+      <a href="index.html" class="logo">Digi<span>Cores</span></a>
+      <nav class="nav">
+        <a href="index.html">Início</a>
+        <a href="produtos.html" class="active">Produtos</a>
+        <a href="contacto.html">Contacto</a>
+      </nav>
+      <div class="header-actions">
+        <a href="admin/login.html" class="btn btn-outline btn-sm">Área Admin</a>
+        <a href="carrinho.html" class="cart-btn" id="cartBtn">
+          🛒 <span class="cart-count" id="cartCount">0</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="products-page">
+  <div class="container">
+    <div class="page-header">
+      <h1>Todos os Produtos</h1>
+      <p>Impressão e comunicação visual de alta qualidade</p>
+    </div>
+
+    <div class="filters-bar">
+      <input type="search" class="search-input" id="searchInput" placeholder="Pesquisar produtos..." />
+      <div class="select-wrap" style="position:relative;">
+        <select class="filter-select" id="categoryFilter">
+          <option value="">Todas as Categorias</option>
+        </select>
+      </div>
+      <div class="select-wrap" style="position:relative;">
+        <select class="filter-select" id="sortFilter">
+          <option value="">Ordenar por</option>
+          <option value="price-asc">Preço: Menor → Maior</option>
+          <option value="price-desc">Preço: Maior → Menor</option>
+          <option value="name">Nome A-Z</option>
+        </select>
+      </div>
+      <span class="products-count" id="productsCount"></span>
+    </div>
+
+    <!-- Category pills -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px;" id="catPills"></div>
+
+    <!-- Products Grid -->
+    <div class="products-grid" id="productsGrid"></div>
+
+    <!-- Empty state -->
+    <div id="emptyState" class="cart-empty d-none">
+      <div class="icon">🔍</div>
+      <h2>Nenhum produto encontrado</h2>
+      <p>Tente ajustar os filtros ou a pesquisa.</p>
+      <button class="btn btn-primary" onclick="clearFilters()">Limpar Filtros</button>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-bottom" style="border-top:none;padding:24px 0;">
+      <span>© 2024 DigiCores. Todos os direitos reservados.</span>
+      <a href="index.html">← Voltar ao Início</a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  let allProducts = [];
+  let activeCategory = '';
+  let searchTerm = '';
+  let sortBy = '';
+
+  function updateCartCount() {
+    document.getElementById('cartCount').textContent = DigiDB.getCart().length;
+  }
+
+  function getCategoryName(id) {
+    const cats = DigiDB.getCategories();
+    const c = cats.find(c => c.id === id);
+    return c ? c.name : id;
+  }
+
+  function renderCatPills() {
+    const cats = DigiDB.getCategories();
+    const pills = document.getElementById('catPills');
+    pills.innerHTML = `<button class="cat-pill ${activeCategory === '' ? 'active' : ''}" onclick="setCategory('')">Todos</button>` +
+      cats.map(c => `<button class="cat-pill ${activeCategory === c.id ? 'active' : ''}" onclick="setCategory('${c.id}')">${c.icon} ${c.name}</button>`).join('');
+
+    // Also populate select
+    const sel = document.getElementById('categoryFilter');
+    sel.innerHTML = '<option value="">Todas as Categorias</option>' +
+      cats.map(c => `<option value="${c.id}" ${activeCategory === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
+  }
+
+  function setCategory(catId) {
+    activeCategory = catId;
+    renderCatPills();
+    renderProducts();
+    // Update URL
+    const url = new URL(window.location);
+    if (catId) url.searchParams.set('cat', catId);
+    else url.searchParams.delete('cat');
+    history.replaceState({}, '', url);
+  }
+
+  function renderProducts() {
+    let products = allProducts.filter(p => p.active);
+
+    if (activeCategory) products = products.filter(p => p.category === activeCategory);
+    if (searchTerm) {
+      const s = searchTerm.toLowerCase();
+      products = products.filter(p => p.name.toLowerCase().includes(s) || p.description.toLowerCase().includes(s));
+    }
+    if (sortBy === 'price-asc') products.sort((a, b) => a.startingPrice - b.startingPrice);
+    else if (sortBy === 'price-desc') products.sort((a, b) => b.startingPrice - a.startingPrice);
+    else if (sortBy === 'name') products.sort((a, b) => a.name.localeCompare(b.name));
+
+    const grid = document.getElementById('productsGrid');
+    const empty = document.getElementById('emptyState');
+    const count = document.getElementById('productsCount');
+
+    count.textContent = `${products.length} produto${products.length !== 1 ? 's' : ''}`;
+
+    if (products.length === 0) {
+      grid.innerHTML = '';
+      empty.classList.remove('d-none');
+    } else {
+      empty.classList.add('d-none');
+      grid.innerHTML = products.map(p => productCard(p)).join('');
+    }
+  }
+
+  function productCard(p) {
+    return `
+      <div class="product-card">
+        <a href="produto.html?id=${p.id}" class="product-img">
+          <img src="${p.image}" alt="${p.name}" loading="lazy" onerror="this.src='https://placehold.co/600x400/f0f2f5/999?text=${encodeURIComponent(p.name)}'">
+          ${p.featured ? '<span class="product-badge">Destaque</span>' : ''}
+        </a>
+        <div class="product-info">
+          <div class="product-category">${getCategoryName(p.category)}</div>
+          <h3 class="product-name"><a href="produto.html?id=${p.id}">${p.name}</a></h3>
+          <p class="product-desc">${p.description}</p>
+          <div class="product-price">
+            A partir de <strong>€${p.startingPrice.toFixed(2)}</strong>
+            ${p.priceUnit ? `<span class="price-unit"> ${p.priceUnit}</span>` : ''}
+          </div>
+          <a href="produto.html?id=${p.id}" class="btn btn-primary btn-block">Calcular Preço</a>
+        </div>
+      </div>`;
+  }
+
+  function clearFilters() {
+    activeCategory = '';
+    searchTerm = '';
+    sortBy = '';
+    document.getElementById('searchInput').value = '';
+    document.getElementById('categoryFilter').value = '';
+    document.getElementById('sortFilter').value = '';
+    renderCatPills();
+    renderProducts();
+  }
+
+  // Init
+  allProducts = DigiDB.getProducts();
+  updateCartCount();
+
+  // URL params
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('cat')) activeCategory = params.get('cat');
+
+  renderCatPills();
+  renderProducts();
+
+  // Events
+  document.getElementById('searchInput').addEventListener('input', e => {
+    searchTerm = e.target.value;
+    renderProducts();
+  });
+  document.getElementById('categoryFilter').addEventListener('change', e => {
+    setCategory(e.target.value);
+  });
+  document.getElementById('sortFilter').addEventListener('change', e => {
+    sortBy = e.target.value;
+    renderProducts();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Checkout - DigiCores</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Stripe.js — carregado sempre de js.stripe.com para segurança PCI -->
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    /* ── Checkout Layout ── */
+    .checkout-page { padding: 48px 0 80px; }
+    .checkout-grid { display: grid; grid-template-columns: 1fr 380px; gap: 32px; align-items: start; }
+
+    /* ── Steps ── */
+    .steps { display: flex; align-items: center; gap: 0; margin-bottom: 36px; }
+    .step { display: flex; align-items: center; gap: 8px; }
+    .step-num {
+      width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    .step.done .step-num   { background: var(--success); color: #fff; }
+    .step.active .step-num { background: var(--primary); color: #fff; }
+    .step.pending .step-num { background: var(--border); color: var(--text-muted); }
+    .step-label { font-size: 13px; font-weight: 600; }
+    .step.active .step-label { color: var(--primary); }
+    .step.pending .step-label { color: var(--text-muted); }
+    .step-sep { flex: 1; height: 2px; background: var(--border); margin: 0 10px; min-width: 24px; }
+    .step.done .step-sep, .step.active .step-sep { background: var(--primary); }
+
+    /* ── Checkout Card ── */
+    .checkout-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px; }
+    .checkout-card-header { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .checkout-card-header h3 { font-size: 16px; font-weight: 700; }
+    .checkout-card-body { padding: 24px; }
+
+    /* ── Payment Methods ── */
+    .payment-methods { display: flex; flex-direction: column; gap: 10px; }
+    .payment-method {
+      border: 2px solid var(--border); border-radius: var(--radius-lg);
+      cursor: pointer; transition: var(--transition); overflow: hidden;
+    }
+    .payment-method:hover { border-color: var(--primary); }
+    .payment-method.selected { border-color: var(--primary); background: rgba(255,69,0,0.02); }
+    .payment-method-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 20px; user-select: none;
+    }
+    .payment-radio {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid var(--border); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: var(--transition);
+    }
+    .payment-method.selected .payment-radio { border-color: var(--primary); background: var(--primary); }
+    .payment-method.selected .payment-radio::after { content: ''; width: 8px; height: 8px; background: #fff; border-radius: 50%; display: block; }
+    .payment-icon { font-size: 26px; }
+    .payment-label { flex: 1; }
+    .payment-label strong { display: block; font-size: 15px; }
+    .payment-label small { font-size: 12px; color: var(--text-muted); }
+    .payment-logos { display: flex; gap: 6px; align-items: center; }
+    .payment-logo {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 3px 8px; font-size: 11px;
+      font-weight: 700; color: var(--text-muted); white-space: nowrap;
+    }
+
+    .payment-body { padding: 0 20px 20px; display: none; }
+    .payment-method.selected .payment-body { display: block; }
+
+    /* ── Card Form ── */
+    .card-form { display: flex; flex-direction: column; gap: 14px; }
+    .card-input-group { position: relative; }
+    .card-input-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; color: var(--text); }
+    .card-input {
+      width: 100%; padding: 12px 14px; border: 1.5px solid var(--border);
+      border-radius: var(--radius); font-size: 15px; font-family: 'Courier New', monospace;
+      transition: var(--transition); background: var(--white);
+    }
+    .card-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,69,0,0.08); }
+    .card-input.error { border-color: var(--danger); }
+    .card-input-icon { position: absolute; right: 12px; bottom: 11px; font-size: 18px; pointer-events: none; }
+    .card-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .card-brands { display: flex; gap: 6px; margin-bottom: 14px; }
+    .card-brand-chip {
+      padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800;
+      border: 1.5px solid var(--border); color: var(--text-muted); opacity: 0.5;
+      transition: var(--transition);
+    }
+    .card-brand-chip.active { opacity: 1; border-color: var(--primary); color: var(--primary); }
+    .secure-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+    /* ── MB WAY ── */
+    .mbway-form { display: flex; flex-direction: column; gap: 14px; }
+    .phone-input-wrap { display: flex; gap: 0; }
+    .phone-flag { padding: 12px 14px; background: var(--bg); border: 1.5px solid var(--border); border-right: none; border-radius: var(--radius) 0 0 var(--radius); font-size: 15px; }
+    .phone-input { flex: 1; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 0 var(--radius) var(--radius) 0; font-size: 15px; }
+    .phone-input:focus { outline: none; border-color: var(--primary); }
+    .mbway-info { background: #e8f5ff; border-radius: var(--radius); padding: 12px 14px; font-size: 13px; color: #0066cc; border-left: 3px solid #0066cc; }
+    .mbway-steps { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .mbway-step { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; }
+    .mbway-step-num { background: #0066cc; color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+
+    /* ── Multibanco ── */
+    .mb-reference-box { background: var(--bg); border-radius: var(--radius-lg); padding: 20px; text-align: center; border: 2px dashed var(--border); }
+    .mb-ref-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .mb-ref-row:last-child { border: none; }
+    .mb-ref-label { font-size: 13px; color: var(--text-muted); }
+    .mb-ref-value { font-size: 18px; font-weight: 800; font-family: 'Courier New', monospace; color: var(--dark); letter-spacing: 1px; }
+    .mb-expiry { font-size: 12px; color: var(--text-muted); margin-top: 10px; }
+    .mb-logo { font-size: 32px; margin-bottom: 10px; }
+
+    /* ── Bank Transfer ── */
+    .bank-details { background: var(--bg); border-radius: var(--radius); padding: 16px; }
+    .bank-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .bank-row:last-child { border: none; }
+    .bank-row-label { color: var(--text-muted); font-size: 13px; }
+    .bank-row-value { font-weight: 600; font-family: 'Courier New', monospace; }
+    .copy-btn { padding: 2px 8px; font-size: 11px; background: var(--white); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text-muted); transition: var(--transition); }
+    .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── PayPal ── */
+    .paypal-btn {
+      background: #0070ba; color: #fff; border: none; border-radius: var(--radius-lg);
+      padding: 14px; font-size: 16px; font-weight: 700; width: 100%; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: var(--transition);
+    }
+    .paypal-btn:hover { background: #003087; }
+    .paypal-logo { font-size: 22px; }
+
+    /* ── Order Summary ── */
+    .order-summary { position: sticky; top: 80px; }
+    .summary-product { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .summary-product:last-of-type { border: none; }
+    .summary-product img { width: 52px; height: 40px; border-radius: 6px; object-fit: cover; background: var(--bg); flex-shrink: 0; }
+    .summary-product-name { font-size: 13px; font-weight: 600; }
+    .summary-product-price { font-size: 13px; font-weight: 700; margin-left: auto; flex-shrink: 0; }
+    .summary-product-opts { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── Billing Form ── */
+    .billing-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    /* ── Confirmation ── */
+    .confirmation { text-align: center; padding: 40px 20px; }
+    .confirmation-icon { font-size: 72px; margin-bottom: 20px; animation: popIn 0.4s ease; }
+    @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .confirmation h2 { margin-bottom: 8px; }
+    .confirmation p { color: var(--text-muted); margin-bottom: 24px; }
+    .confirmation-ref { background: var(--bg); border-radius: var(--radius-lg); padding: 20px; margin: 20px auto; max-width: 320px; }
+    .confirmation-ref .ref-num { font-size: 24px; font-weight: 900; font-family: 'Courier New', monospace; color: var(--primary); }
+
+    @media (max-width: 900px) {
+      .checkout-grid { grid-template-columns: 1fr; }
+      .order-summary { position: static; }
+    }
+    @media (max-width: 600px) {
+      .billing-form-grid { grid-template-columns: 1fr; }
+      .steps { font-size: 12px; }
+      .step-label { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="container">
+    <div class="header-inner">
+      <a href="index.html" class="logo">Digi<span>Cores</span></a>
+      <div class="header-actions" style="margin-left:auto;">
+        <a href="carrinho.html" class="btn btn-ghost btn-sm">← Voltar ao Carrinho</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="checkout-page">
+  <div class="container">
+
+    <!-- Steps -->
+    <div class="steps" id="stepsBar">
+      <div class="step done" id="step1">
+        <div class="step-num">✓</div>
+        <div class="step-label">Carrinho</div>
+        <div class="step-sep"></div>
+      </div>
+      <div class="step active" id="step2">
+        <div class="step-num">2</div>
+        <div class="step-label">Checkout</div>
+        <div class="step-sep"></div>
+      </div>
+      <div class="step pending" id="step3">
+        <div class="step-num">3</div>
+        <div class="step-label">Confirmação</div>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="checkout-grid" id="checkoutGrid">
+
+      <!-- LEFT: Forms -->
+      <div id="checkoutForms">
+
+        <!-- Billing Info -->
+        <div class="checkout-card">
+          <div class="checkout-card-header">
+            <span style="font-size:20px;">👤</span>
+            <h3>Dados de Faturação</h3>
+          </div>
+          <div class="checkout-card-body">
+            <div class="billing-form-grid">
+              <div class="form-group mb-0">
+                <label>Nome *</label>
+                <input type="text" id="billing_name" placeholder="Nome completo" />
+              </div>
+              <div class="form-group mb-0">
+                <label>Empresa</label>
+                <input type="text" id="billing_company" placeholder="Nome da empresa (opcional)" />
+              </div>
+              <div class="form-group mb-0">
+                <label>Email *</label>
+                <input type="email" id="billing_email" placeholder="email@empresa.pt" />
+              </div>
+              <div class="form-group mb-0">
+                <label>Telefone *</label>
+                <input type="tel" id="billing_phone" placeholder="+351 900 000 000" />
+              </div>
+              <div class="form-group mb-0" style="grid-column:1/-1;">
+                <label>NIF</label>
+                <input type="text" id="billing_nif" placeholder="PT123456789 (para fatura com NIF)" maxlength="11" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shipping -->
+        <div class="checkout-card">
+          <div class="checkout-card-header">
+            <span style="font-size:20px;">🚚</span>
+            <h3>Morada de Entrega</h3>
+          </div>
+          <div class="checkout-card-body">
+            <div class="billing-form-grid">
+              <div class="form-group mb-0" style="grid-column:1/-1;">
+                <label>Morada *</label>
+                <input type="text" id="ship_address" placeholder="Rua, número, andar..." />
+              </div>
+              <div class="form-group mb-0">
+                <label>Código Postal *</label>
+                <input type="text" id="ship_zip" placeholder="0000-000" maxlength="8" />
+              </div>
+              <div class="form-group mb-0">
+                <label>Localidade *</label>
+                <input type="text" id="ship_city" placeholder="Lisboa" />
+              </div>
+              <div class="form-group mb-0" style="grid-column:1/-1;">
+                <label>País</label>
+                <select id="ship_country">
+                  <option>Portugal</option>
+                  <option>Espanha</option>
+                  <option>Outro</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Methods -->
+        <div class="checkout-card">
+          <div class="checkout-card-header">
+            <span style="font-size:20px;">💳</span>
+            <h3>Método de Pagamento</h3>
+          </div>
+          <div class="checkout-card-body">
+            <div class="payment-methods" id="paymentMethods">
+
+              <!-- 1. Cartão Crédito/Débito (Stripe) -->
+              <div class="payment-method" id="pm_card" onclick="selectPayment('card')">
+                <div class="payment-method-header">
+                  <div class="payment-radio"></div>
+                  <span class="payment-icon">💳</span>
+                  <div class="payment-label">
+                    <strong>Cartão de Crédito / Débito</strong>
+                    <small>Visa, Mastercard, American Express</small>
+                  </div>
+                  <div class="payment-logos">
+                    <span class="payment-logo" style="color:#1a1f71;border-color:#1a1f71;">VISA</span>
+                    <span class="payment-logo" style="color:#eb001b;border-color:#eb001b;">MC</span>
+                    <span class="payment-logo" style="color:#007bc1;border-color:#007bc1;">AMEX</span>
+                  </div>
+                </div>
+                <div class="payment-body">
+                  <div class="card-input-group" style="margin-bottom:14px;">
+                    <label>Titular do Cartão</label>
+                    <input class="card-input" id="card_name" placeholder="NOME COMO NO CARTÃO"
+                           style="font-family:inherit;" oninput="this.value=this.value.toUpperCase()" />
+                  </div>
+                  <!-- Stripe Elements injeta aqui um iframe seguro (PCI-DSS) -->
+                  <div class="card-input-group">
+                    <label>Dados do Cartão</label>
+                    <div id="stripe-card-element" style="padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--white);min-height:44px;"></div>
+                    <div id="stripe-card-errors" style="color:var(--danger);font-size:13px;margin-top:6px;"></div>
+                  </div>
+                  <div class="secure-badge" style="margin-top:12px;">
+                    🔒 Formulário seguro via <strong style="margin-left:4px;">Stripe</strong> — os dados do cartão nunca passam pelos nossos servidores
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. MB WAY -->
+              <div class="payment-method" id="pm_mbway" onclick="selectPayment('mbway')">
+                <div class="payment-method-header">
+                  <div class="payment-radio"></div>
+                  <span class="payment-icon">📱</span>
+                  <div class="payment-label">
+                    <strong>MB WAY</strong>
+                    <small>Pagamento instantâneo via app</small>
+                  </div>
+                  <div class="payment-logos">
+                    <span class="payment-logo" style="color:#e30613;border-color:#e30613;">MB WAY</span>
+                  </div>
+                </div>
+                <div class="payment-body">
+                  <!-- Real: POST para API Eupago/Ifthenpay com telemovel + valor -->
+                  <div class="mbway-info">
+                    📱 Irá receber uma notificação na app MB WAY para confirmar o pagamento.
+                  </div>
+                  <div class="mbway-form" style="margin-top:14px;">
+                    <div class="card-input-group">
+                      <label>Número de Telemóvel</label>
+                      <div class="phone-input-wrap">
+                        <span class="phone-flag">🇵🇹 +351</span>
+                        <input class="phone-input" id="mbway_phone" placeholder="912 345 678"
+                               maxlength="9" oninput="this.value=this.value.replace(/\D/g,'')" />
+                      </div>
+                    </div>
+                    <div class="mbway-steps">
+                      <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Como funciona:</div>
+                      <div class="mbway-step"><span class="mbway-step-num">1</span> Introduza o seu número e clique em Pagar</div>
+                      <div class="mbway-step"><span class="mbway-step-num">2</span> Abra a app MB WAY no telemóvel</div>
+                      <div class="mbway-step"><span class="mbway-step-num">3</span> Aceite o pedido de pagamento</div>
+                      <div class="mbway-step"><span class="mbway-step-num">4</span> Pagamento confirmado em segundos!</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Multibanco -->
+              <div class="payment-method" id="pm_mb" onclick="selectPayment('mb')">
+                <div class="payment-method-header">
+                  <div class="payment-radio"></div>
+                  <span class="payment-icon">🏧</span>
+                  <div class="payment-label">
+                    <strong>Multibanco (Referência ATM)</strong>
+                    <small>Pague num caixa ATM ou Home Banking</small>
+                  </div>
+                  <div class="payment-logos">
+                    <span class="payment-logo" style="color:#e30613;border-color:#e30613;">MB</span>
+                  </div>
+                </div>
+                <div class="payment-body">
+                  <!-- Real: POST para API Eupago/Ifthenpay → retorna entidade + referência -->
+                  <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">
+                    Após confirmar a encomenda, será gerada uma referência para pagamento no ATM ou Home Banking.
+                  </p>
+                  <div class="mb-reference-box" id="mbRefBox">
+                    <div class="mb-logo">🏧</div>
+                    <div class="mb-ref-row">
+                      <span class="mb-ref-label">Entidade</span>
+                      <span class="mb-ref-value" id="mbEntity">—</span>
+                    </div>
+                    <div class="mb-ref-row">
+                      <span class="mb-ref-label">Referência</span>
+                      <span class="mb-ref-value" id="mbRef">—</span>
+                    </div>
+                    <div class="mb-ref-row">
+                      <span class="mb-ref-label">Montante</span>
+                      <span class="mb-ref-value" id="mbAmount">—</span>
+                    </div>
+                    <div class="mb-expiry" id="mbExpiry">A referência será gerada após confirmação da encomenda.</div>
+                  </div>
+                  <div style="margin-top:12px;padding:10px 14px;background:var(--bg);border-radius:var(--radius);font-size:12px;color:var(--text-muted);">
+                    ⏰ A referência tem validade de <strong>48 horas</strong>. A encomenda só é processada após confirmação do pagamento.
+                  </div>
+                </div>
+              </div>
+
+              <!-- 4. PayPal -->
+              <div class="payment-method" id="pm_paypal" onclick="selectPayment('paypal')">
+                <div class="payment-method-header">
+                  <div class="payment-radio"></div>
+                  <span class="payment-icon">🅿️</span>
+                  <div class="payment-label">
+                    <strong>PayPal</strong>
+                    <small>Pague com a sua conta PayPal</small>
+                  </div>
+                  <div class="payment-logos">
+                    <span class="payment-logo" style="color:#003087;border-color:#003087;">Pay<span style="color:#009cde;">Pal</span></span>
+                  </div>
+                </div>
+                <div class="payment-body">
+                  <!-- Real: PayPal JS SDK → PayPal.Buttons().render('#paypal-button-container') -->
+                  <!-- <script src="https://www.paypal.com/sdk/js?client-id=YOUR_CLIENT_ID&currency=EUR"></script> -->
+                  <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">
+                    Será redirecionado para o PayPal para completar o pagamento em segurança.
+                  </p>
+                  <!-- Em produção: substituir pelo PayPal Buttons SDK -->
+                  <div id="paypal-button-container">
+                    <button class="paypal-btn" onclick="simulatePayPal(event)">
+                      <span class="paypal-logo">🅿️</span>
+                      Pagar com PayPal
+                    </button>
+                  </div>
+                  <div style="margin-top:10px;text-align:center;font-size:12px;color:var(--text-muted);">
+                    🔒 Redirecionamento seguro para paypal.com
+                  </div>
+                </div>
+              </div>
+
+              <!-- 5. Transferência Bancária -->
+              <div class="payment-method" id="pm_transfer" onclick="selectPayment('transfer')">
+                <div class="payment-method-header">
+                  <div class="payment-radio"></div>
+                  <span class="payment-icon">🏦</span>
+                  <div class="payment-label">
+                    <strong>Transferência Bancária</strong>
+                    <small>SEPA / Transferência nacional</small>
+                  </div>
+                  <div class="payment-logos">
+                    <span class="payment-logo">SEPA</span>
+                    <span class="payment-logo">IBAN</span>
+                  </div>
+                </div>
+                <div class="payment-body">
+                  <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">
+                    Dados para transferência. Use o número de encomenda como referência do pagamento.
+                  </p>
+                  <div class="bank-details">
+                    <div class="bank-row">
+                      <span class="bank-row-label">Banco</span>
+                      <span class="bank-row-value">Banco de Demonstração</span>
+                    </div>
+                    <div class="bank-row">
+                      <span class="bank-row-label">Titular</span>
+                      <span class="bank-row-value">DigiCores, Lda.</span>
+                    </div>
+                    <div class="bank-row">
+                      <span class="bank-row-label">IBAN</span>
+                      <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="bank-row-value" id="ibanValue">PT50 0000 0000 0000 0000 0000 0</span>
+                        <button class="copy-btn" onclick="copyText('PT50 0000 0000 0000 0000 0000 0', this)">Copiar</button>
+                      </div>
+                    </div>
+                    <div class="bank-row">
+                      <span class="bank-row-label">BIC/SWIFT</span>
+                      <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="bank-row-value">BDEMPTPL</span>
+                        <button class="copy-btn" onclick="copyText('BDEMPTPL', this)">Copiar</button>
+                      </div>
+                    </div>
+                    <div class="bank-row">
+                      <span class="bank-row-label">Referência</span>
+                      <span class="bank-row-value" id="transferRef">Gerado após encomenda</span>
+                    </div>
+                  </div>
+                  <div style="margin-top:12px;padding:10px 14px;background:#fff3cd;border-radius:var(--radius);font-size:12px;color:#856404;border-left:3px solid #ffc107;">
+                    ⚠️ A encomenda é processada após confirmação da transferência (1-2 dias úteis).
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Pay Button -->
+            <div style="margin-top:24px;">
+              <button class="btn btn-primary btn-block btn-lg" id="payBtn" onclick="processPayment()">
+                🔒 Confirmar Pagamento
+              </button>
+              <div id="payError" style="color:var(--danger);font-size:13px;text-align:center;margin-top:8px;display:none;"></div>
+              <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:14px;font-size:12px;color:var(--text-muted);">
+                <span>🔒 SSL Seguro</span>
+                <span>🛡️ PCI-DSS Compliant</span>
+                <span>↩️ Devoluções em 14 dias</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Order Summary -->
+      <div class="order-summary">
+        <div class="checkout-card">
+          <div class="checkout-card-header">
+            <span style="font-size:20px;">🛒</span>
+            <h3>Resumo</h3>
+            <a href="carrinho.html" style="margin-left:auto;font-size:12px;color:var(--text-muted);">Editar</a>
+          </div>
+          <div class="checkout-card-body">
+            <div id="summaryProducts"></div>
+            <div style="margin-top:16px;padding-top:16px;border-top:2px solid var(--border);">
+              <div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;">
+                <span style="color:var(--text-muted);">Subtotal</span>
+                <span id="summarySubtotal">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;">
+                <span style="color:var(--text-muted);">IVA 23%</span>
+                <span id="summaryIVA">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;">
+                <span style="color:var(--text-muted);">Envio</span>
+                <span id="summaryShipping">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800;padding:12px 0 0;border-top:1px solid var(--border);margin-top:6px;">
+                <span>Total</span>
+                <span id="summaryTotal" style="color:var(--primary);">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security Badges -->
+        <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center;margin-top:12px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Pagamento Seguro</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:var(--text-muted);">
+            <div style="padding:8px;background:var(--bg);border-radius:6px;">🔒 SSL 256-bit</div>
+            <div style="padding:8px;background:var(--bg);border-radius:6px;">🛡️ PCI-DSS</div>
+            <div style="padding:8px;background:var(--bg);border-radius:6px;">📱 MB WAY</div>
+            <div style="padding:8px;background:var(--bg);border-radius:6px;">🏧 Multibanco</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Confirmation Screen (hidden initially) -->
+    <div id="confirmationScreen" style="display:none;max-width:600px;margin:0 auto;">
+      <div class="checkout-card">
+        <div class="checkout-card-body confirmation">
+          <div class="confirmation-icon">🎉</div>
+          <h2>Encomenda Confirmada!</h2>
+          <p id="confirmationMsg">O seu pagamento foi processado com sucesso. Irá receber um email de confirmação em breve.</p>
+          <div class="confirmation-ref">
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Referência da Encomenda</div>
+            <div class="ref-num" id="confirmRef">DC-00000</div>
+          </div>
+          <div style="background:var(--bg);border-radius:var(--radius-lg);padding:16px;margin:16px 0;text-align:left;" id="paymentConfirmDetails"></div>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:24px;">
+            <a href="produtos.html" class="btn btn-primary">Continuar a Comprar</a>
+            <a href="index.html" class="btn btn-ghost">Ir para o Início</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  /* ==========================================================
+     CHECKOUT PAGE LOGIC
+     ==========================================================
+     PRODUÇÃO — O que cada método precisa:
+
+     CARTÃO (Stripe):
+       1. npm install @stripe/stripe-js
+       2. Backend: POST /api/create-payment-intent → retorna client_secret
+       3. Frontend: loadStripe(PK) → stripe.confirmCardPayment(client_secret, cardElement)
+       Docs: https://stripe.com/docs/payments/accept-a-payment
+
+     MB WAY (via Eupago ou Ifthenpay):
+       1. Conta em eupago.pt ou ifthenpay.com
+       2. Backend: POST https://clientes.eupago.pt/clientes/rest_api/mbway/create
+          Body: { chave, valor, alias, descricao }
+       3. Webhook recebe confirmação de pagamento
+       Docs: https://eupago.pt/documentacao/
+
+     MULTIBANCO (via Eupago ou Ifthenpay):
+       1. Backend: POST https://clientes.eupago.pt/clientes/rest_api/multibanco/create
+          Body: { chave, valor, data_inicio, data_fim }
+       2. Retorna: { entidade, referencia, valor }
+       3. Exibir ao utilizador para pagar no ATM
+       Docs: https://eupago.pt/documentacao/
+
+     PAYPAL:
+       1. Conta em developer.paypal.com → get Client ID
+       2. Frontend: <script src="paypal-sdk?client-id=...">
+          paypal.Buttons({ createOrder, onApprove }).render('#container')
+       Docs: https://developer.paypal.com/sdk/js/
+
+     TRANSFERÊNCIA BANCÁRIA:
+       - Sem integração técnica necessária
+       - Verificação manual ou via webhook bancário (SEPA Direct)
+  ========================================================== */
+
+  // ── ⚠️ COLOQUE AQUI A SUA PUBLISHABLE KEY (começa com pk_test_...) ──
+  const STRIPE_PUBLISHABLE_KEY = 'pk_test_51T9N5LAr4sl9qN1ug04B3n3hyh3BmzjLIZ1FY0X0WrsJiQ0FpWPyYH8d7F4MmzEAB1VCY6OwTyRrlzs73dOsBUWF00pO3Nco3Z';
+
+  let selectedMethod = 'card';
+  let cart = [];
+  let stripeInstance = null;
+
+  // ── Mensagens de erro Stripe legíveis ──
+  function friendlyStripeError(msg) {
+    if (!msg) return 'Erro desconhecido.';
+    if (msg.includes('mb_way') && (msg.includes('not enabled') || msg.includes('not activated')))
+      return 'MB WAY não está activado nesta conta Stripe. Vá a dashboard.stripe.com → Settings → Payment Methods e active o MB WAY.';
+    if (msg.includes('Invalid phone'))
+      return 'Número de telemóvel inválido para MB WAY. Use um número português (+351 9XXXXXXXX).';
+    if (msg.includes('payment_method_types') && msg.includes('mb_way'))
+      return 'MB WAY não disponível. Active-o em dashboard.stripe.com → Settings → Payment Methods.';
+    if (msg.includes('No such payment_method'))
+      return 'Método de pagamento não encontrado. Tente novamente.';
+    if (msg.includes('amount') || msg.includes('currency'))
+      return 'Erro no montante. Verifique o carrinho.';
+    return msg;
+  }
+
+  // ── Verificar se servidor está a correr ──
+  function checkServer() {
+    if (window.location.protocol === 'file:') {
+      showServerWarning('⚠️ Está a abrir o ficheiro directamente. Para os pagamentos funcionarem, abra <strong>http://localhost:3000</strong> depois de correr <code>node server.js</code>.');
+      return;
+    }
+    fetch('/api/health').then(r => r.ok
+      ? hideServerWarning()
+      : showServerWarning('⚠️ Servidor não responde. Verifique que <code>node server.js</code> está a correr.')
+    ).catch(() =>
+      showServerWarning('⚠️ Servidor não disponível. Corra <code>node server.js</code> e aceda via <strong>http://localhost:3000</strong>.')
+    );
+  }
+
+  function showServerWarning(html) {
+    let el = document.getElementById('serverWarning');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'serverWarning';
+      el.style.cssText = 'background:#fff3cd;border:1.5px solid #ffc107;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#856404;line-height:1.6;';
+      document.querySelector('.checkout-page .container').prepend(el);
+    }
+    el.innerHTML = html;
+  }
+  function hideServerWarning() {
+    const el = document.getElementById('serverWarning');
+    if (el) el.remove();
+  }
+  let stripeCardElement = null;
+  let stripeReady = false;
+
+  function showToast(msg, type = '') {
+    const tc = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<span>${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span> ${msg}`;
+    tc.appendChild(t);
+    setTimeout(() => { t.classList.add('hiding'); setTimeout(() => t.remove(), 300); }, 3500);
+  }
+
+  function selectPayment(method) {
+    selectedMethod = method;
+    document.querySelectorAll('.payment-method').forEach(el => el.classList.remove('selected'));
+    document.getElementById(`pm_${method}`).classList.add('selected');
+
+    // Update pay button label
+    const labels = {
+      card: '🔒 Pagar com Cartão',
+      mbway: '📱 Enviar Pedido MB WAY',
+      mb: '🏧 Gerar Referência Multibanco',
+      paypal: '🅿️ Pagar com PayPal',
+      transfer: '🏦 Confirmar Encomenda'
+    };
+    document.getElementById('payBtn').textContent = labels[method] || '🔒 Confirmar Pagamento';
+    hidePayError();
+  }
+
+  function hidePayError() {
+    document.getElementById('payError').style.display = 'none';
+  }
+
+  function showPayError(msg) {
+    const el = document.getElementById('payError');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  // ── Inicializar Stripe Elements ──
+  function initStripe() {
+    if (!window.Stripe || STRIPE_PUBLISHABLE_KEY.includes('COLOQUE_AQUI')) {
+      console.warn('Stripe: publishable key não configurada. A usar modo simulação.');
+      return;
+    }
+    try {
+      stripeInstance = Stripe(STRIPE_PUBLISHABLE_KEY);
+      const elements = stripeInstance.elements({ locale: 'pt' });
+      stripeCardElement = elements.create('card', {
+        style: {
+          base: {
+            fontFamily: 'Segoe UI, system-ui, sans-serif',
+            fontSize: '15px',
+            color: '#212529',
+            '::placeholder': { color: '#adb5bd' }
+          },
+          invalid: { color: '#dc3545' }
+        },
+        hidePostalCode: true
+      });
+      stripeCardElement.mount('#stripe-card-element');
+      stripeCardElement.on('change', e => {
+        const errEl = document.getElementById('stripe-card-errors');
+        errEl.textContent = e.error ? e.error.message : '';
+      });
+      stripeReady = true;
+      console.log('✅ Stripe Elements inicializado');
+    } catch (err) {
+      console.error('Erro ao inicializar Stripe:', err);
+    }
+  }
+
+  // ── Validate Billing ──
+  function validateBilling() {
+    const name = document.getElementById('billing_name').value.trim();
+    const email = document.getElementById('billing_email').value.trim();
+    const phone = document.getElementById('billing_phone').value.trim();
+    const address = document.getElementById('ship_address').value.trim();
+    const zip = document.getElementById('ship_zip').value.trim();
+    const city = document.getElementById('ship_city').value.trim();
+    if (!name || !email || !phone || !address || !zip || !city) {
+      return 'Por favor, preencha todos os dados de faturação e entrega.';
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email inválido.';
+    return null;
+  }
+
+  // ── Validate Payment (campos não-Stripe) ──
+  function validatePayment() {
+    if (selectedMethod === 'card') {
+      const name = document.getElementById('card_name').value.trim();
+      if (!name) return 'Introduza o nome do titular do cartão.';
+      return null;
+    }
+    if (selectedMethod === 'mbway') {
+      const phone = document.getElementById('mbway_phone').value;
+      if (phone.length !== 9 || !/^9/.test(phone)) return 'Número de telemóvel inválido.';
+      return null;
+    }
+    return null;
+  }
+
+  // ── Process Payment ──
+  async function processPayment() {
+    const billingErr = validateBilling();
+    if (billingErr) { showPayError(billingErr); return; }
+
+    const payErr = validatePayment();
+    if (payErr) { showPayError(payErr); return; }
+
+    const btn = document.getElementById('payBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> A processar...';
+    hidePayError();
+
+    // ── Cartão com Stripe real ──
+    if (selectedMethod === 'card' && stripeReady && stripeInstance && stripeCardElement) {
+      try {
+        const total = calcTotal();
+        const billingName = document.getElementById('billing_name').value.trim();
+        const billingEmail = document.getElementById('billing_email').value.trim();
+
+        // 1. Pedir client_secret ao servidor
+        const res = await fetch('/api/create-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: total,
+            currency: 'eur',
+            metadata: { email: billingEmail, name: billingName }
+          })
+        });
+        const ct = res.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+          throw new Error('Servidor não disponível. Abra http://localhost:3000 e verifique que node server.js está a correr.');
+        }
+        const { clientSecret, error: serverError } = await res.json();
+        if (serverError) throw new Error(friendlyStripeError(serverError));
+
+        // 2. Confirmar pagamento com Stripe.js (iframe seguro)
+        const { error, paymentIntent } = await stripeInstance.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: stripeCardElement,
+            billing_details: {
+              name: document.getElementById('card_name').value.trim(),
+              email: billingEmail
+            }
+          }
+        });
+
+        if (error) {
+          // Erros de cartão recusado, 3DS, etc.
+          showPayError(`❌ ${error.message}`);
+          btn.disabled = false;
+          btn.textContent = '🔒 Pagar com Cartão';
+          return;
+        }
+
+        if (paymentIntent.status === 'succeeded') {
+          completeOrder(paymentIntent.id);
+        }
+      } catch (err) {
+        showPayError(`Erro: ${err.message}`);
+        btn.disabled = false;
+        btn.textContent = '🔒 Pagar com Cartão';
+      }
+      return;
+    }
+
+    // ── MB WAY via Stripe real ──
+    if (selectedMethod === 'mbway' && stripeReady) {
+      try {
+        const total = calcTotal();
+        const phone = document.getElementById('mbway_phone').value.trim();
+        const billingEmail = document.getElementById('billing_email').value.trim();
+        const billingName = document.getElementById('billing_name').value.trim();
+
+        const res = await fetch('/api/create-mbway-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: total,
+            phone,
+            metadata: { email: billingEmail, name: billingName }
+          })
+        });
+        // Detectar resposta HTML (servidor não está a correr)
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          throw new Error('Servidor não disponível. Certifique-se que abriu http://localhost:3000 (não o ficheiro directamente) e que node server.js está a correr.');
+        }
+        const data = await res.json();
+        if (data.error) {
+          // Erro específico do Stripe (MB WAY não activado, número inválido, etc.)
+          const friendly = friendlyStripeError(data.error);
+          throw new Error(friendly);
+        }
+
+        if (data.status === 'requires_action' || data.status === 'processing') {
+          // Notificação enviada — mostrar ecrã de espera e fazer polling
+          showMbwayWaiting(data.paymentIntentId, phone);
+        } else if (data.status === 'succeeded') {
+          completeOrder(data.paymentIntentId);
+        } else {
+          throw new Error(`Estado inesperado: ${data.status}`);
+        }
+      } catch (err) {
+        showPayError(`Erro MB WAY: ${err.message}`);
+        btn.disabled = false;
+        btn.textContent = '📱 Enviar Pedido MB WAY';
+      }
+      return;
+    }
+
+    // ── Outros métodos (simulação) ou fallback sem Stripe ──
+    const delays = { card: 1800, mbway: 1500, mb: 800, paypal: 1800, transfer: 600 };
+    setTimeout(() => completeOrder(), delays[selectedMethod] || 1500);
+  }
+
+  // ── Ecrã de espera MB WAY ──
+  let mbwayPollInterval = null;
+
+  function showMbwayWaiting(paymentIntentId, phone) {
+    const btn = document.getElementById('payBtn');
+    btn.disabled = false;
+    btn.textContent = '📱 Enviar Pedido MB WAY';
+
+    // Mostrar overlay de espera inline
+    const paySection = document.getElementById('pm_mbway').querySelector('.payment-body');
+    const waitingId = 'mbway-waiting-box';
+    if (!document.getElementById(waitingId)) {
+      const box = document.createElement('div');
+      box.id = waitingId;
+      box.style.cssText = 'background:#e8f5ff;border-radius:8px;padding:16px;margin-top:14px;text-align:center;border:2px solid #0066cc;';
+      box.innerHTML = `
+        <div style="font-size:36px;margin-bottom:8px;">📱</div>
+        <div style="font-weight:700;font-size:15px;color:#0066cc;margin-bottom:6px;">Pedido enviado para +351 ${phone}</div>
+        <div style="font-size:13px;color:#333;margin-bottom:12px;">Abra a app <strong>MB WAY</strong> e aceite o pagamento.<br>Tem <strong id="mbway-countdown">4:00</strong> minutos.</div>
+        <div style="font-size:12px;color:#666;" id="mbway-poll-status">A verificar confirmação...</div>`;
+      paySection.appendChild(box);
+    }
+
+    // Countdown 4 minutos
+    let seconds = 240;
+    const countdownEl = () => document.getElementById('mbway-countdown');
+    const countdownTimer = setInterval(() => {
+      seconds--;
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      if (countdownEl()) countdownEl().textContent = `${m}:${s.toString().padStart(2, '0')}`;
+      if (seconds <= 0) {
+        clearInterval(countdownTimer);
+        clearInterval(mbwayPollInterval);
+        showPayError('❌ Tempo expirado. O pagamento MB WAY não foi confirmado.');
+        const box = document.getElementById(waitingId);
+        if (box) box.remove();
+      }
+    }, 1000);
+
+    // Polling a cada 3 segundos
+    mbwayPollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/payment-status/${paymentIntentId}`);
+        const data = await res.json();
+        const statusEl = document.getElementById('mbway-poll-status');
+        if (statusEl) statusEl.textContent = `Estado: ${data.status}`;
+
+        if (data.status === 'succeeded') {
+          clearInterval(mbwayPollInterval);
+          clearInterval(countdownTimer);
+          const box = document.getElementById(waitingId);
+          if (box) box.remove();
+          completeOrder(paymentIntentId);
+        } else if (data.status === 'canceled' || data.status === 'payment_failed') {
+          clearInterval(mbwayPollInterval);
+          clearInterval(countdownTimer);
+          showPayError('❌ Pagamento MB WAY recusado ou cancelado.');
+          const box = document.getElementById(waitingId);
+          if (box) box.remove();
+        }
+      } catch (_) { /* ignorar erros de rede no polling */ }
+    }, 3000);
+  }
+
+  function completeOrder(stripePaymentId) {
+    const ref = 'DC-' + Math.floor(Math.random() * 90000 + 10000);
+    const total = calcTotal();
+
+    // Generate MB reference (simulated)
+    const mbEntity = '21314';
+    const mbReference = Array.from({length: 9}, () => Math.floor(Math.random() * 10)).join('').replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3');
+    const now = new Date();
+    const expiry = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+
+    // Payment-specific confirmation messages
+    const confirmDetails = {
+      card: `<div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <div><strong>Método:</strong> Cartão de Crédito/Débito</div>
+        <div><strong>Estado:</strong> <span style="color:var(--success);font-weight:700;">✅ Pago</span></div>
+        <div><strong>Montante:</strong> €${total.toFixed(2)}</div>
+        <div><strong>ID Transação:</strong> <code style="font-size:11px;">${stripePaymentId || 'pi_' + Date.now()}</code></div>
+      </div>`,
+      mbway: `<div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <div><strong>Método:</strong> MB WAY</div>
+        <div><strong>Telemóvel:</strong> +351 ${document.getElementById('mbway_phone').value}</div>
+        <div style="background:#fff3cd;padding:10px;border-radius:6px;color:#856404;">⏳ A aguardar confirmação na app MB WAY...</div>
+        <div style="font-size:12px;color:var(--text-muted);">O pagamento expira em 4 minutos. Abra a app MB WAY para confirmar.</div>
+      </div>`,
+      mb: `<div style="display:flex;flex-direction:column;gap:8px;font-size:14px;">
+        <div style="font-weight:700;margin-bottom:4px;">🏧 Dados para pagamento ATM / Home Banking</div>
+        <div class="mb-ref-row" style="display:flex;justify-content:space-between;padding:8px;background:var(--bg);border-radius:6px;">
+          <span style="color:var(--text-muted);font-size:12px;">Entidade</span><strong>${mbEntity}</strong>
+        </div>
+        <div class="mb-ref-row" style="display:flex;justify-content:space-between;padding:8px;background:var(--bg);border-radius:6px;">
+          <span style="color:var(--text-muted);font-size:12px;">Referência</span><strong style="font-family:monospace;">${mbReference}</strong>
+        </div>
+        <div class="mb-ref-row" style="display:flex;justify-content:space-between;padding:8px;background:var(--bg);border-radius:6px;">
+          <span style="color:var(--text-muted);font-size:12px;">Montante</span><strong>€${total.toFixed(2)}</strong>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);">⏰ Válido até ${expiry.toLocaleDateString('pt-PT')} às ${expiry.toLocaleTimeString('pt-PT', {hour:'2-digit',minute:'2-digit'})}</div>
+      </div>`,
+      paypal: `<div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <div><strong>Método:</strong> PayPal</div>
+        <div><strong>Estado:</strong> <span style="color:var(--success);font-weight:700;">✅ Autorizado</span></div>
+        <div><strong>Montante:</strong> €${total.toFixed(2)}</div>
+        <div><strong>ID PayPal:</strong> <code style="font-size:11px;">PAYID-${Date.now()}</code></div>
+      </div>`,
+      transfer: `<div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <div><strong>Método:</strong> Transferência Bancária</div>
+        <div><strong>IBAN:</strong> <code>PT50 0000 0000 0000 0000 0000 0</code></div>
+        <div><strong>Referência:</strong> <strong style="color:var(--primary);">${ref}</strong></div>
+        <div><strong>Montante:</strong> €${total.toFixed(2)}</div>
+        <div style="background:#fff3cd;padding:8px;border-radius:6px;font-size:12px;color:#856404;">⚠️ Inclua a referência <strong>${ref}</strong> no campo de descritivo da transferência.</div>
+      </div>`
+    };
+
+    // Update confirmation UI
+    document.getElementById('confirmRef').textContent = ref;
+    document.getElementById('confirmationMsg').textContent = getConfirmMsg(selectedMethod);
+    document.getElementById('paymentConfirmDetails').innerHTML = confirmDetails[selectedMethod] || '';
+
+    // Hide checkout, show confirmation
+    document.getElementById('checkoutGrid').style.display = 'none';
+    document.getElementById('confirmationScreen').style.display = 'block';
+
+    // Update step indicators
+    document.getElementById('step2').className = 'step done';
+    document.getElementById('step2').querySelector('.step-num').textContent = '✓';
+    document.getElementById('step3').className = 'step active';
+
+    // Clear cart
+    DigiDB.clearCart();
+
+    showToast('Encomenda registada com sucesso!', 'success');
+  }
+
+  function getConfirmMsg(method) {
+    const msgs = {
+      card: 'O pagamento foi processado com sucesso. Receberá um email de confirmação em breve.',
+      mbway: 'Foi enviado um pedido de pagamento para o seu telemóvel. Confirme na app MB WAY.',
+      mb: 'A referência Multibanco foi gerada. Pague no ATM ou Home Banking.',
+      paypal: 'O pagamento PayPal foi autorizado com sucesso. Email de confirmação enviado.',
+      transfer: 'Encomenda registada. Aguardamos a sua transferência bancária para iniciar a produção.'
+    };
+    return msgs[method] || 'Encomenda registada com sucesso!';
+  }
+
+  function simulatePayPal(e) {
+    e.stopPropagation();
+    const btn = e.currentTarget;
+    btn.textContent = '⏳ A redirecionar para PayPal...';
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = '✅ Autorizado! A regressar...';
+      setTimeout(() => {
+        btn.textContent = '🅿️ Pagar com PayPal';
+        btn.disabled = false;
+        showToast('PayPal autorizado (simulação). Clique em Confirmar.', 'success');
+      }, 1500);
+    }, 1800);
+  }
+
+  function copyText(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'Copiado!';
+      btn.style.color = 'var(--success)';
+      setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 2000);
+    });
+  }
+
+  function calcTotal() {
+    const subtotal = cart.reduce((s, i) => s + i.price, 0);
+    const iva = subtotal * 0.23;
+    const shipping = subtotal >= 75 ? 0 : 5.90;
+    return subtotal + iva + shipping;
+  }
+
+  // ── Render Summary ──
+  function renderSummary() {
+    if (cart.length === 0) {
+      window.location.href = 'carrinho.html';
+      return;
+    }
+
+    const subtotal = cart.reduce((s, i) => s + i.price, 0);
+    const iva = subtotal * 0.23;
+    const shipping = subtotal >= 75 ? 0 : 5.90;
+    const total = subtotal + iva + shipping;
+
+    document.getElementById('summaryProducts').innerHTML = cart.map(item => {
+      const opts = item.selections ? Object.entries(item.selections)
+        .filter(([k, v]) => v)
+        .slice(0, 3)
+        .map(([k, v]) => `${v}`)
+        .join(' · ') : '';
+      return `
+        <div class="summary-product">
+          <img src="${item.productImage}" alt="${item.productName}"
+               onerror="this.src='https://placehold.co/52x40/f0f2f5/999?text=?'">
+          <div style="flex:1;min-width:0;">
+            <div class="summary-product-name">${item.productName}</div>
+            ${opts ? `<div class="summary-product-opts">${opts}</div>` : ''}
+          </div>
+          <div class="summary-product-price">€${item.price.toFixed(2)}</div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('summarySubtotal').textContent = `€${subtotal.toFixed(2)}`;
+    document.getElementById('summaryIVA').textContent = `€${iva.toFixed(2)}`;
+    document.getElementById('summaryShipping').innerHTML = shipping === 0
+      ? `<span style="color:var(--success)">Grátis</span>`
+      : `€${shipping.toFixed(2)}`;
+    document.getElementById('summaryTotal').textContent = `€${total.toFixed(2)}`;
+
+    // Pre-fill MB amount
+    document.getElementById('mbAmount').textContent = `€${total.toFixed(2)}`;
+  }
+
+  // Init
+  cart = DigiDB.getCart();
+  renderSummary();
+  selectPayment('card');
+  initStripe();  // inicializa Stripe Elements se a chave estiver configurada
+</script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login Admin - DigiCores</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body class="admin-body">
+
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">Digi<span>Cores</span></div>
+    <div class="login-subtitle">Back Office — Acesso Restrito</div>
+
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label for="username">Utilizador</label>
+        <input type="text" id="username" placeholder="admin" autocomplete="username" required />
+      </div>
+      <div class="form-group">
+        <label for="password">Palavra-passe</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" required />
+        <div class="form-error" id="loginError">Credenciais inválidas. Tente novamente.</div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg" id="loginBtn">
+        Entrar
+      </button>
+    </form>
+
+    <div style="margin-top:24px;padding:16px;background:var(--bg);border-radius:var(--radius);font-size:13px;color:var(--text-muted);">
+      <strong>Demo:</strong><br>
+      Utilizador: <code style="background:#e9ecef;padding:2px 5px;border-radius:3px;">admin</code>
+      Senha: <code style="background:#e9ecef;padding:2px 5px;border-radius:3px;">digicores2024</code>
+    </div>
+
+    <div style="margin-top:16px;text-align:center;">
+      <a href="../index.html" style="font-size:13px;color:var(--text-muted);">← Voltar ao Site</a>
+    </div>
+  </div>
+</div>
+
+<script src="../js/db.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  // Already logged in?
+  if (DigiAuth.isAdmin()) {
+    window.location.href = 'dashboard.html';
+  }
+
+  function handleLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('loginBtn');
+    const errEl = document.getElementById('loginError');
+
+    errEl.classList.remove('show');
+    btn.textContent = 'A autenticar...';
+    btn.disabled = true;
+
+    setTimeout(() => {
+      const result = DigiAuth.login(username, password);
+      if (result.success) {
+        btn.textContent = '✅ Sucesso! A redirecionar...';
+        setTimeout(() => window.location.href = 'dashboard.html', 600);
+      } else {
+        errEl.classList.add('show');
+        btn.textContent = 'Entrar';
+        btn.disabled = false;
+        document.getElementById('password').value = '';
+        document.getElementById('password').focus();
+      }
+    }, 500);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Produto - DigiCores</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="header">
+  <div class="container">
+    <div class="header-inner">
+      <a href="index.html" class="logo">Digi<span>Cores</span></a>
+      <nav class="nav">
+        <a href="index.html">Início</a>
+        <a href="produtos.html">Produtos</a>
+        <a href="contacto.html">Contacto</a>
+      </nav>
+      <div class="header-actions">
+        <a href="admin/login.html" class="btn btn-outline btn-sm">Área Admin</a>
+        <a href="carrinho.html" class="cart-btn" id="cartBtn">
+          🛒 <span class="cart-count" id="cartCount">0</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="product-detail">
+  <div class="container">
+    <div class="breadcrumb" id="breadcrumb">
+      <a href="index.html">Início</a>
+      <span class="breadcrumb-sep">›</span>
+      <a href="produtos.html">Produtos</a>
+      <span class="breadcrumb-sep">›</span>
+      <span id="breadcrumbName">...</span>
+    </div>
+
+    <div id="productContent">
+      <div style="text-align:center;padding:80px 20px;color:var(--text-muted);">A carregar produto...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Related Products -->
+<section class="section-sm" style="background:var(--bg)">
+  <div class="container">
+    <h3 style="margin-bottom:24px;">Produtos Relacionados</h3>
+    <div class="products-grid" id="relatedGrid"></div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-bottom" style="border-top:none;padding:24px 0;">
+      <span>© 2024 DigiCores. Todos os direitos reservados.</span>
+      <a href="produtos.html">← Voltar aos Produtos</a>
+    </div>
+  </div>
+</footer>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  let currentProduct = null;
+  let currentSelections = {};
+
+  function showToast(msg, type = '') {
+    const tc = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<span>${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span> ${msg}`;
+    tc.appendChild(t);
+    setTimeout(() => { t.classList.add('hiding'); setTimeout(() => t.remove(), 300); }, 3200);
+  }
+
+  function updateCartCount() {
+    document.getElementById('cartCount').textContent = DigiDB.getCart().length;
+  }
+
+  function getCategoryName(id) {
+    const c = DigiDB.getCategories().find(c => c.id === id);
+    return c ? c.name : id;
+  }
+
+  // Build select field
+  function buildSelect(id, label, options, onChange) {
+    return `
+      <div class="calc-field">
+        <label for="${id}">${label}</label>
+        <div class="select-wrap">
+          <select id="${id}" onchange="${onChange}">
+            ${options.map(o => `<option value="${o}">${o}</option>`).join('')}
+          </select>
+        </div>
+      </div>`;
+  }
+
+  // Build calculator by pricing type
+  function buildCalculator(p) {
+    const o = p.options || {};
+    let fields = '';
+
+    if (p.pricingType === 'flyer') {
+      fields = buildSelect('sel_qty', 'Quantidade', o.quantities, 'updatePrice()') +
+        buildSelect('sel_size', 'Tamanho', o.sizes, 'updatePrice()') +
+        buildSelect('sel_paper', 'Gramagem do Papel', o.papers, 'updatePrice()') +
+        buildSelect('sel_sides', 'Impressão', o.sides, 'updatePrice()');
+
+    } else if (p.pricingType === 'cartao') {
+      fields = buildSelect('sel_qty', 'Quantidade', o.quantities, 'updatePrice()') +
+        buildSelect('sel_finish', 'Acabamento', o.finishes, 'updatePrice()') +
+        buildSelect('sel_corners', 'Cantos', o.corners, 'updatePrice()') +
+        buildSelect('sel_sides', 'Impressão', o.sides, 'updatePrice()');
+
+    } else if (p.pricingType === 'folheto') {
+      fields = buildSelect('sel_qty', 'Quantidade', o.quantities, 'updatePrice()') +
+        buildSelect('sel_size', 'Formato', o.sizes, 'updatePrice()') +
+        buildSelect('sel_fold', 'Tipo de Dobra', o.folds, 'updatePrice()') +
+        buildSelect('sel_paper', 'Gramagem do Papel', o.papers, 'updatePrice()');
+
+    } else if (p.pricingType === 'envelope') {
+      fields = buildSelect('sel_qty', 'Quantidade', o.quantities, 'updatePrice()') +
+        buildSelect('sel_size', 'Formato', o.sizes, 'updatePrice()') +
+        buildSelect('sel_paper', 'Gramagem', o.papers, 'updatePrice()') +
+        buildSelect('sel_window', 'Janela', o.windows, 'updatePrice()');
+
+    } else if (p.pricingType === 'autocolante') {
+      fields = buildSelect('sel_qty', 'Quantidade', o.quantities, 'updatePrice()') +
+        buildSelect('sel_size', 'Tamanho', o.sizes, 'updatePrice()') +
+        buildSelect('sel_material', 'Material', o.materials, 'updatePrice()') +
+        buildSelect('sel_finish', 'Acabamento', o.finishes, 'updatePrice()');
+
+    } else if (p.pricingType === 'etiqueta') {
+      fields = buildSelect('sel_qty', 'Quantidade', o.quantities, 'updatePrice()') +
+        buildSelect('sel_size', 'Diâmetro/Lado', o.sizes, 'updatePrice()') +
+        buildSelect('sel_shape', 'Forma', o.shapes, 'updatePrice()') +
+        buildSelect('sel_material', 'Material', o.materials, 'updatePrice()');
+
+    } else if (p.pricingType === 'brinde-unidade') {
+      const modelOpts = o.models || o.capacity || o.materials || [];
+      if (modelOpts.length) {
+        fields += buildSelect('sel_model', 'Modelo / Capacidade', modelOpts, 'updatePrice()');
+      }
+      fields += buildSelect('sel_qty', 'Quantidade', o.quantities, 'updatePrice()');
+      if (o.colors) fields += buildSelect('sel_color', 'Cor', o.colors, 'updatePrice()');
+      if (o.printAreas) fields += buildSelect('sel_print', 'Área de Impressão', o.printAreas, 'updatePrice()');
+
+    } else if (p.pricingType === 'rollup') {
+      fields = buildSelect('sel_size', 'Tamanho', o.sizes, 'updatePrice()') +
+        buildSelect('sel_material', 'Material', o.materials, 'updatePrice()') +
+        buildSelect('sel_qty', 'Quantidade', o.quantities.map(String), 'updatePrice()');
+
+    } else if (p.pricingType === 'expositor') {
+      fields = buildSelect('sel_size', 'Tamanho', o.sizes, 'updatePrice()') +
+        buildSelect('sel_accessories', 'Acessórios', o.accessories, 'updatePrice()') +
+        buildSelect('sel_qty', 'Quantidade', o.quantities.map(String), 'updatePrice()');
+
+    } else if (p.pricingType === 'area') {
+      const widths = o.widths || [1, 2, 3];
+      const heights = o.heights || [1, 2];
+      fields = `
+        <div class="calc-field">
+          <label>Dimensões (metros)</label>
+          <div class="size-inputs">
+            <div>
+              <label style="font-size:11px;color:var(--text-muted);">Largura (m)</label>
+              <div class="select-wrap"><select id="sel_width" onchange="updatePrice()">
+                ${widths.map(w => `<option value="${w}">${w}m</option>`).join('')}
+              </select></div>
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-muted);">Altura (m)</label>
+              <div class="select-wrap"><select id="sel_height" onchange="updatePrice()">
+                ${heights.map(h => `<option value="${h}">${h}m</option>`).join('')}
+              </select></div>
+            </div>
+          </div>
+        </div>
+        ${o.finishes ? buildSelect('sel_finish', 'Acabamento', o.finishes, 'updatePrice()') : ''}
+        ${o.thicknesses ? buildSelect('sel_thickness', 'Espessura', o.thicknesses, 'updatePrice()') : ''}`;
+
+    } else if (p.pricingType === 'textil') {
+      const techniques = o.printTechniques || o.techniques || ['Impressão Digital'];
+      fields = buildSelect('sel_qty', 'Quantidade', o.quantities.map(String), 'updatePrice()') +
+        buildSelect('sel_size', 'Tamanho', o.sizes, 'updatePrice()') +
+        buildSelect('sel_print', 'Área de Impressão', o.printTypes, 'updatePrice()') +
+        buildSelect('sel_technique', 'Técnica de Impressão', techniques, 'updatePrice()');
+      if (o.fabrics) fields += buildSelect('sel_fabric', 'Tecido', o.fabrics, 'updatePrice()');
+      if (o.types) fields += buildSelect('sel_type', 'Tipo', o.types, 'updatePrice()');
+    }
+
+    return fields;
+  }
+
+  function getSelections(p) {
+    const get = id => { const el = document.getElementById(id); return el ? el.value : null; };
+    const type = p.pricingType;
+    const sel = {};
+
+    if (['flyer', 'folheto'].includes(type)) {
+      sel.quantity = parseInt(get('sel_qty')) || p.options.quantities[0];
+      sel.size = get('sel_size');
+      sel.paper = get('sel_paper');
+      sel.sides = get('sel_sides');
+      if (type === 'folheto') sel.fold = get('sel_fold');
+    } else if (type === 'cartao') {
+      sel.quantity = parseInt(get('sel_qty')) || 100;
+      sel.finish = get('sel_finish');
+      sel.corners = get('sel_corners');
+      sel.sides = get('sel_sides');
+    } else if (type === 'envelope') {
+      sel.quantity = parseInt(get('sel_qty')) || 250;
+      sel.size = get('sel_size');
+      sel.paper = get('sel_paper');
+      sel.window = get('sel_window');
+    } else if (type === 'autocolante') {
+      sel.quantity = parseInt(get('sel_qty')) || 50;
+      sel.size = get('sel_size');
+      sel.material = get('sel_material');
+      sel.finish = get('sel_finish');
+    } else if (type === 'etiqueta') {
+      sel.quantity = parseInt(get('sel_qty')) || 100;
+      sel.size = get('sel_size');
+      sel.shape = get('sel_shape');
+      sel.material = get('sel_material');
+    } else if (type === 'brinde-unidade') {
+      sel.quantity = parseInt(get('sel_qty')) || 50;
+      sel.model = get('sel_model');
+    } else if (type === 'rollup') {
+      sel.size = get('sel_size');
+      sel.material = get('sel_material');
+      sel.quantity = parseInt(get('sel_qty')) || 1;
+    } else if (type === 'expositor') {
+      sel.size = get('sel_size');
+      sel.accessories = get('sel_accessories');
+      sel.quantity = parseInt(get('sel_qty')) || 1;
+    } else if (type === 'area') {
+      sel.width = parseFloat(get('sel_width')) || 1;
+      sel.height = parseFloat(get('sel_height')) || 1;
+      sel.finish = get('sel_finish');
+    } else if (type === 'textil') {
+      sel.quantity = parseInt(get('sel_qty')) || 10;
+      sel.size = get('sel_size');
+      sel.printType = get('sel_print');
+      sel.technique = get('sel_technique');
+      sel.printTechnique = get('sel_technique');
+      sel.fabric = get('sel_fabric');
+      sel.type = get('sel_type');
+    }
+
+    return sel;
+  }
+
+  function updatePrice() {
+    if (!currentProduct) return;
+    const sel = getSelections(currentProduct);
+    currentSelections = sel;
+    const net = DigiDB.calculatePrice(currentProduct, sel);
+    const iva = Math.round(net * 0.23 * 100) / 100;
+    const gross = Math.round((net + iva) * 100) / 100;
+
+    document.getElementById('priceNet').textContent   = '€' + net.toFixed(2);
+    document.getElementById('priceVAT').textContent   = '€' + iva.toFixed(2);
+    document.getElementById('priceGross').textContent = '€' + gross.toFixed(2);
+
+    const p = currentProduct;
+    let note = '';
+    if (p.pricingType === 'area') {
+      const w = sel.width || 1, h = sel.height || 1;
+      const area = (w * h).toFixed(2);
+      note = `${w}m × ${h}m = ${area}m²  ×  €${p.startingPrice.toFixed(2)}/m²  =  €${net.toFixed(2)} s/IVA`;
+    } else if (p.pricingType === 'brinde-unidade') {
+      const qty = sel.quantity || 50;
+      note = `${qty} un.  ×  €${(net / qty).toFixed(3)}/un.  =  €${net.toFixed(2)} s/IVA`;
+    } else if (p.pricingType === 'textil') {
+      const qty = sel.quantity || 1;
+      note = `${qty} peças  ×  €${(net / qty).toFixed(2)}/peça  =  €${net.toFixed(2)} s/IVA`;
+    } else if (p.pricingType === 'rollup' || p.pricingType === 'expositor') {
+      const qty = sel.quantity || 1;
+      note = `${qty} un.  ×  €${(net / qty).toFixed(2)}/un.  =  €${net.toFixed(2)} s/IVA`;
+    } else if (sel.quantity) {
+      const qty = sel.quantity;
+      note = `${qty} un.  ×  €${(net / qty).toFixed(4)}/un.  =  €${net.toFixed(2)} s/IVA`;
+    }
+    document.getElementById('priceNote').textContent = note;
+  }
+
+  function addToCart() {
+    if (!currentProduct) return;
+    const price = DigiDB.calculatePrice(currentProduct, currentSelections);
+    DigiDB.addToCart(currentProduct, currentSelections, price);
+    updateCartCount();
+
+    const btn = document.getElementById('addCartBtn');
+    btn.textContent = '✅ Adicionado!';
+    btn.classList.add('btn-success');
+    btn.classList.remove('btn-primary');
+    setTimeout(() => {
+      btn.textContent = '🛒 Adicionar ao Carrinho';
+      btn.classList.remove('btn-success');
+      btn.classList.add('btn-primary');
+    }, 2000);
+
+    showToast(`${currentProduct.name} adicionado ao carrinho!`, 'success');
+
+    // Bounce cart
+    const cartBtn = document.getElementById('cartBtn');
+    cartBtn.classList.add('cart-bounce');
+    setTimeout(() => cartBtn.classList.remove('cart-bounce'), 300);
+  }
+
+  function renderProduct(p) {
+    document.title = `${p.name} - DigiCores`;
+    document.getElementById('breadcrumbName').textContent = p.name;
+
+    const catName = getCategoryName(p.category);
+    const calcFields = buildCalculator(p);
+
+    document.getElementById('productContent').innerHTML = `
+      <div class="product-detail-grid">
+        <div class="product-detail-img">
+          <img src="${p.image}" alt="${p.name}" onerror="this.src='https://placehold.co/600x400/f0f2f5/999?text=${encodeURIComponent(p.name)}'">
+        </div>
+        <div class="product-detail-info">
+          <div class="cat-label">${catName}</div>
+          <h1>${p.name}</h1>
+          <p class="description">${p.description}</p>
+
+          <div class="calc-box">
+            <h3>⚙️ Configurar e Calcular Preço</h3>
+            ${calcFields}
+
+            <div class="price-display">
+              <div class="label">Detalhe do Preço</div>
+              <div class="pb-row">
+                <span class="pb-label">Preço s/IVA</span>
+                <span class="pb-value" id="priceNet">—</span>
+              </div>
+              <div class="pb-row">
+                <span class="pb-label">IVA (23%)</span>
+                <span class="pb-value" id="priceVAT">—</span>
+              </div>
+              <div class="pb-row pb-total">
+                <span class="pb-label">Total c/IVA</span>
+                <span class="pb-value" id="priceGross">—</span>
+              </div>
+              <div class="note" id="priceNote"></div>
+            </div>
+
+            <button id="addCartBtn" class="btn btn-primary btn-block btn-lg" onclick="addToCart()">
+              🛒 Adicionar ao Carrinho
+            </button>
+            <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--text-muted);">
+              Entrega em 3-5 dias úteis • Envio gratuito acima de €75
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    // Trigger initial price calculation
+    updatePrice();
+  }
+
+  function renderRelated(p) {
+    const related = DigiDB.getProducts()
+      .filter(r => r.active && r.id !== p.id && r.category === p.category)
+      .slice(0, 4);
+    document.getElementById('relatedGrid').innerHTML = related.map(r => `
+      <div class="product-card">
+        <a href="produto.html?id=${r.id}" class="product-img">
+          <img src="${r.image}" alt="${r.name}" loading="lazy" onerror="this.src='https://placehold.co/600x400/f0f2f5/999?text=${encodeURIComponent(r.name)}'">
+        </a>
+        <div class="product-info">
+          <div class="product-category">${getCategoryName(r.category)}</div>
+          <h3 class="product-name"><a href="produto.html?id=${r.id}">${r.name}</a></h3>
+          <p class="product-desc">${r.description}</p>
+          <div class="product-price">A partir de <strong>€${r.startingPrice.toFixed(2)}</strong></div>
+          <a href="produto.html?id=${r.id}" class="btn btn-outline btn-block">Ver Produto</a>
+        </div>
+      </div>`).join('');
+  }
+
+  // Init
+  updateCartCount();
+  const params = new URLSearchParams(window.location.search);
+  const productId = params.get('id');
+
+  if (!productId) {
+    window.location.href = 'produtos.html';
+  } else {
+    const product = DigiDB.getProduct(productId);
+    if (!product) {
+      document.getElementById('productContent').innerHTML = `
+        <div class="cart-empty">
+          <div class="icon">😕</div>
+          <h2>Produto não encontrado</h2>
+          <p>O produto que procura não existe ou foi removido.</p>
+          <a href="produtos.html" class="btn btn-primary">Ver Todos os Produtos</a>
+        </div>`;
+    } else {
+      currentProduct = product;
+      renderProduct(product);
+      renderRelated(product);
+    }
+  }
+</script>
+</body>
+</html>

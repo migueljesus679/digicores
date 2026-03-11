@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Produto - DigiCores Admin</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .options-editor { border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .options-tab-bar { display: flex; border-bottom: 1.5px solid var(--border); background: var(--bg); }
+    .options-tab { padding: 10px 16px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; background: none; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1.5px; }
+    .options-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--white); }
+    .options-panel { padding: 16px; display: none; }
+    .options-panel.active { display: block; }
+    .tag-input-wrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border: 1.5px solid var(--border); border-radius: var(--radius); min-height: 42px; cursor: text; align-items: flex-start; }
+    .tag-input-wrap:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,69,0,0.1); }
+    .tag { display: inline-flex; align-items: center; gap: 4px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 500; }
+    .tag-remove { cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; }
+    .tag-remove:hover { color: var(--danger); }
+    .tag-input { border: none; outline: none; font-size: 13px; min-width: 120px; flex: 1; font-family: inherit; padding: 2px 4px; }
+    .pricing-type-info { background: var(--bg); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; color: var(--text-muted); margin-top: 8px; border-left: 3px solid var(--primary); }
+    .sim-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+    .sim-table thead tr { background:var(--bg-2); }
+    .sim-table th { padding:7px 10px; font-weight:600; color:var(--text-muted); white-space:nowrap; }
+    .sim-table th:first-child { text-align:left; }
+    .sim-table th:not(:first-child) { text-align:right; }
+    .sim-table td { padding:7px 10px; border-bottom:1px solid var(--border); }
+    .sim-table td:first-child { color:var(--text); }
+    .sim-table td:not(:first-child) { text-align:right; font-variant-numeric:tabular-nums; }
+    .sim-table td.sim-gross { font-weight:700; color:var(--primary); }
+    .sim-table td.sim-unit { color:var(--text-muted); font-size:11.5px; }
+    .sim-table tbody tr:last-child td { border-bottom:none; }
+    .sim-table tbody tr:hover td { background:var(--bg); }
+    .sim-formula { font-family:monospace; font-size:11.5px; background:var(--bg-2); padding:8px 12px; border-radius:var(--radius); color:var(--text-muted); border-left:3px solid var(--warning); margin-bottom:10px; }
+    .img-preview { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: var(--radius); background: var(--bg); margin-bottom: 8px; border: 1.5px solid var(--border); }
+  </style>
+</head>
+<body class="admin-body">
+<div class="admin-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-logo">
+      <div class="logo">Digi<span>Cores</span></div>
+      <small>Back Office</small>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">Menu</div>
+      <a href="dashboard.html"><span class="nav-icon">📊</span><span>Dashboard</span></a>
+      <a href="produtos.html"><span class="nav-icon">📦</span><span>Produtos</span></a>
+      <a href="produto-form.html" class="active"><span class="nav-icon">➕</span><span>Novo Produto</span></a>
+      <div class="sidebar-section">Loja</div>
+      <a href="../index.html" target="_blank"><span class="nav-icon">🌐</span><span>Ver Loja</span></a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="sidebar-user-info" id="userName">Administrador</div>
+      <div class="sidebar-user-role">Admin</div>
+      <button class="sidebar-logout" onclick="DigiAuth.logout()">Terminar Sessão</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <div class="admin-page-title" id="pageTitle">Novo Produto</div>
+      <div class="admin-topbar-actions">
+        <a href="produtos.html" class="btn btn-ghost btn-sm">← Cancelar</a>
+        <button class="btn btn-primary btn-sm" onclick="saveProduct()" id="saveBtn">💾 Guardar</button>
+      </div>
+    </div>
+
+    <div class="admin-content">
+      <form id="productForm" onsubmit="saveProduct(event)">
+        <div class="admin-form-grid">
+
+          <!-- LEFT: Main Info -->
+          <div style="display:flex;flex-direction:column;gap:20px;">
+
+            <!-- Basic Info Card -->
+            <div class="admin-card" style="padding:24px;">
+              <h4 style="margin-bottom:20px;">📋 Informação Básica</h4>
+
+              <div class="form-group">
+                <label>Nome do Produto *</label>
+                <input type="text" id="name" placeholder="Ex: Flyers A5 Premium" required />
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Categoria *</label>
+                  <select id="category" required>
+                    <option value="">Selecionar...</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Subcategoria</label>
+                  <input type="text" id="subcategory" placeholder="Ex: flyers" oninput="updateSimulator()" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Descrição *</label>
+                <textarea id="description" placeholder="Descreva o produto de forma clara e apelativa..." required></textarea>
+              </div>
+
+              <div class="form-group">
+                <label>URL da Imagem</label>
+                <input type="url" id="image" placeholder="https://..." oninput="previewImage()" />
+                <div class="hint">URL de uma imagem. Deixe em branco para usar imagem padrão.</div>
+              </div>
+            </div>
+
+            <!-- Pricing Card -->
+            <div class="admin-card" style="padding:24px;">
+              <h4 style="margin-bottom:20px;">💰 Preço e Tipo de Cálculo</h4>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Tipo de Cálculo de Preço *</label>
+                  <select id="pricingType" required onchange="onPricingTypeChange()">
+                    <option value="">Selecionar...</option>
+                    <option value="flyer">Flyer (qty + tamanho + papel)</option>
+                    <option value="cartao">Cartão de Visita (qty + acabamento)</option>
+                    <option value="folheto">Folheto Desdobrável (qty + dobra)</option>
+                    <option value="envelope">Envelope (qty + formato)</option>
+                    <option value="autocolante">Autocolante (qty + tamanho + material)</option>
+                    <option value="etiqueta">Etiqueta (qty + forma + material)</option>
+                    <option value="brinde-unidade">Brinde por Unidade (qty * preço unit.)</option>
+                    <option value="rollup">Roll-Up / Expositor por Tamanho</option>
+                    <option value="expositor">Expositor Pop-Up (tamanho + acessórios)</option>
+                    <option value="area">Área (€/m²) — lonas, placas</option>
+                    <option value="textil">Têxtil (qty + tamanho + técnica)</option>
+                  </select>
+                  <div id="pricingTypeInfo" class="pricing-type-info" style="display:none;"></div>
+                </div>
+                <div class="form-group">
+                  <label>Preço Base / A partir de (€) *</label>
+                  <input type="number" id="startingPrice" min="0" step="0.01" placeholder="0.00" required oninput="updateSimulator()" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Unidade de Preço (opcional)</label>
+                <input type="text" id="priceUnit" placeholder="Ex: €/m²" />
+                <div class="hint">Aparece junto ao preço na loja. Deixe em branco se não aplicável.</div>
+              </div>
+
+              <!-- Simulador de Preço -->
+              <div id="priceSimulator" style="display:none;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                  <span style="font-weight:700;font-size:14px;">📊 Simulação de Preços</span>
+                  <span style="font-size:11px;color:var(--text-muted);background:var(--bg-2);padding:2px 8px;border-radius:20px;">Actualiza em tempo real</span>
+                </div>
+                <div id="simContent"></div>
+              </div>
+
+            </div>
+
+            <!-- Options Card -->
+            <div class="admin-card" style="padding:24px;" id="optionsCard">
+              <h4 style="margin-bottom:4px;">⚙️ Opções do Produto</h4>
+              <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Configure as opções disponíveis para este produto. Escreva cada valor e prima Enter para adicionar.</p>
+              <div id="optionsBuilder">
+                <p style="color:var(--text-muted);font-size:14px;">Selecione primeiro o Tipo de Cálculo de Preço para configurar as opções.</p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT: Side panel -->
+          <div style="display:flex;flex-direction:column;gap:20px;">
+
+            <!-- Image Preview -->
+            <div class="admin-card" style="padding:20px;">
+              <h4 style="margin-bottom:12px;">🖼️ Pré-visualização</h4>
+              <img id="imgPreview" class="img-preview" src="https://placehold.co/400x300/f0f2f5/999?text=Sem+Imagem" alt="Preview" />
+            </div>
+
+            <!-- Status Card -->
+            <div class="admin-card" style="padding:20px;">
+              <h4 style="margin-bottom:16px;">📌 Estado e Visibilidade</h4>
+              <div class="form-check" style="margin-bottom:12px;">
+                <input type="checkbox" id="active" checked />
+                <label for="active">Produto Ativo (visível na loja)</label>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" id="featured" />
+                <label for="featured">Produto em Destaque (aparece na homepage)</label>
+              </div>
+            </div>
+
+            <!-- Save -->
+            <div class="admin-card" style="padding:20px;">
+              <button type="button" class="btn btn-primary btn-block btn-lg" onclick="saveProduct()">
+                💾 Guardar Produto
+              </button>
+              <a href="produtos.html" class="btn btn-ghost btn-block mt-2">Cancelar</a>
+              <div id="saveStatus" style="font-size:13px;color:var(--text-muted);text-align:center;margin-top:10px;"></div>
+            </div>
+
+          </div>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="../js/db.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  if (!DigiAuth.requireAdminFromAdmin()) { /* redirected */ }
+
+  const session = DigiAuth.getSession();
+  if (session) document.getElementById('userName').textContent = session.name;
+
+  let editingId = null;
+  let tagInputsState = {};  // { fieldName: [values] }
+
+  const PRICING_TYPE_INFO = {
+    'flyer':         '📐 Preço Base = preço para 100 un., formato A6, papel 90g, impressão simples. Todos os outros cenários escalam proporcionalmente (mais quantidade = melhor preço/un.; tamanhos maiores e papel mais pesado aumentam o valor).',
+    'cartao':        '📐 Preço Base = preço para 100 cartões Mate, cantos retos, impressão simples. Acabamentos premium (Soft Touch, Linho) e impressão frente/verso aumentam o preço.',
+    'folheto':       '📐 Preço Base = preço para 100 folhetos A5 Bi-fold, papel 115g. Formato A4 dobrado, dobras especiais e papéis mais pesados sobem o valor.',
+    'envelope':      '📐 Preço Base = preço para 250 envelopes DL (110×220mm), papel 80g, sem janela. Formatos maiores (C5, C4), papel mais pesado e adição de janela aumentam o preço.',
+    'autocolante':   '📐 Preço Base = preço para 10 autocolantes pequenos (até 5×5cm), papel, acabamento mate. Tamanhos maiores e materiais de vinil aumentam o preço.',
+    'etiqueta':      '📐 Preço Base = preço para 50 etiquetas 30mm redondas em papel brilhante. Diâmetros maiores, formas ovais e material vinil sobem o valor.',
+    'brinde-unidade':'📐 Preço Base = preço POR UNIDADE (ex: €1.20/un.). Total = Preço Base × Quantidade × Desconto de Volume. Mais quantidade = desconto automático.',
+    'rollup':        '📐 Preço Base = preço de 1 Roll-Up 85×200cm em Lona Standard. Tamanhos maiores e materiais premium escalam proporcionalmente. Desconto progressivo a partir de 2 unidades.',
+    'expositor':     '📐 Preço Base = preço do sistema 3×3 Painéis (228×230cm) sem acessórios. Sistemas maiores e acessórios (iluminação LED, balcão) aumentam o valor.',
+    'area':          '📐 Preço Base = preço POR M² (ex: €18.00/m²). Total = Largura × Altura × Preço Base. Preço mínimo de €20 independentemente da área.',
+    'textil':        '📐 Preço Base = custo da peça sem impressão (garment). A técnica (bordado, serigrafia) e tamanhos XL/XXL multiplicam o valor base. Desconto progressivo a partir de 10 peças.'
+  };
+
+  const SIMULATOR_EXAMPLES = {
+    'flyer': [
+      { label: '100 un. · A6 · 90g · Simples',           sel: { quantity: 100,  size: 'A6', paper: '90g',  sides: 'Simples' } },
+      { label: '500 un. · A5 · 115g · Frente/Verso',      sel: { quantity: 500,  size: 'A5', paper: '115g', sides: 'Frente e Verso' } },
+      { label: '1000 un. · A4 · 135g · Frente/Verso',     sel: { quantity: 1000, size: 'A4', paper: '135g', sides: 'Frente e Verso' } },
+      { label: '5000 un. · A6 · 90g · Simples',           sel: { quantity: 5000, size: 'A6', paper: '90g',  sides: 'Simples' } },
+    ],
+    'cartao': [
+      { label: '100 un. · Mate · Retos · Simples',             sel: { quantity: 100,  finish: 'Mate',       corners: 'Retos',        sides: 'Simples' } },
+      { label: '250 un. · Brilhante · Retos · Frente/Verso',   sel: { quantity: 250,  finish: 'Brilhante',  corners: 'Retos',        sides: 'Frente e Verso' } },
+      { label: '500 un. · Soft Touch · Arredondados · F/V',    sel: { quantity: 500,  finish: 'Soft Touch', corners: 'Arredondados', sides: 'Frente e Verso' } },
+      { label: '1000 un. · Linho · Retos · Simples',           sel: { quantity: 1000, finish: 'Linho',      corners: 'Retos',        sides: 'Simples' } },
+    ],
+    'folheto': [
+      { label: '100 un. · A5 Dobrado · Bi-fold · 115g',    sel: { quantity: 100,  size: 'A5 Dobrado (A4)', fold: 'Bi-fold',  paper: '115g' } },
+      { label: '250 un. · A5 Dobrado · Tri-fold · 135g',   sel: { quantity: 250,  size: 'A5 Dobrado (A4)', fold: 'Tri-fold', paper: '135g' } },
+      { label: '500 un. · A4 Dobrado · Bi-fold · 115g',    sel: { quantity: 500,  size: 'A4 Dobrado (A3)', fold: 'Bi-fold',  paper: '115g' } },
+      { label: '1000 un. · A4 Dobrado · Tri-fold · 170g',  sel: { quantity: 1000, size: 'A4 Dobrado (A3)', fold: 'Tri-fold', paper: '170g' } },
+    ],
+    'envelope': [
+      { label: '250 un. · DL · 80g · Sem Janela',    sel: { quantity: 250,  size: 'DL (110x220mm)', paper: '80g',  window: 'Sem Janela' } },
+      { label: '500 un. · DL · 90g · Com Janela',    sel: { quantity: 500,  size: 'DL (110x220mm)', paper: '90g',  window: 'Com Janela' } },
+      { label: '1000 un. · C5 · 80g · Sem Janela',   sel: { quantity: 1000, size: 'C5 (162x229mm)', paper: '80g',  window: 'Sem Janela' } },
+      { label: '2500 un. · C4 · 120g · Com Janela',  sel: { quantity: 2500, size: 'C4 (229x324mm)', paper: '120g', window: 'Com Janela' } },
+    ],
+    'autocolante': [
+      { label: '10 un. · Pequeno · Papel · Mate',              sel: { quantity: 10,  size: 'Pequeno (até 5x5cm)',  material: 'Papel',             finish: 'Mate' } },
+      { label: '50 un. · Médio · Vinil Branco · Brilhante',    sel: { quantity: 50,  size: 'Médio (até 10x10cm)', material: 'Vinil Branco',      finish: 'Brilhante' } },
+      { label: '100 un. · Grande · Vinil Transparente · Mate', sel: { quantity: 100, size: 'Grande (até 20x20cm)', material: 'Vinil Transparente',finish: 'Mate' } },
+      { label: '500 un. · Pequeno · Vinil Branco · Mate',      sel: { quantity: 500, size: 'Pequeno (até 5x5cm)',  material: 'Vinil Branco',      finish: 'Mate' } },
+    ],
+    'etiqueta': [
+      { label: '50 un. · 30mm · Redonda · Papel Brilhante',    sel: { quantity: 50,   size: '30mm',  shape: 'Redonda',     material: 'Papel Brilhante' } },
+      { label: '100 un. · 50mm · Quadrada · Papel Mate',       sel: { quantity: 100,  size: '50mm',  shape: 'Quadrada',    material: 'Papel Mate' } },
+      { label: '250 un. · 70mm · Oval · Vinil',                sel: { quantity: 250,  size: '70mm',  shape: 'Oval',        material: 'Vinil' } },
+      { label: '1000 un. · 100mm · Rectangular · Vinil',       sel: { quantity: 1000, size: '100mm', shape: 'Rectangular', material: 'Vinil' } },
+    ],
+    'brinde-unidade': [
+      { label: '12 unidades',   sel: { quantity: 12 } },
+      { label: '50 unidades',   sel: { quantity: 50 } },
+      { label: '100 unidades',  sel: { quantity: 100 } },
+      { label: '250 unidades',  sel: { quantity: 250 } },
+      { label: '500 unidades',  sel: { quantity: 500 } },
+      { label: '1000 unidades', sel: { quantity: 1000 } },
+    ],
+    'rollup': [
+      { label: '1 un. · 85×200cm · Lona Standard',   sel: { quantity: 1, size: '85x200cm',  material: 'Lona Standard' } },
+      { label: '1 un. · 100×200cm · Lona Premium',   sel: { quantity: 1, size: '100x200cm', material: 'Lona Premium' } },
+      { label: '1 un. · 120×200cm · Lona Backlit',   sel: { quantity: 1, size: '120x200cm', material: 'Lona Backlit' } },
+      { label: '2 un. · 85×200cm · Lona Standard',   sel: { quantity: 2, size: '85x200cm',  material: 'Lona Standard' } },
+      { label: '5 un. · 85×200cm · Lona Standard',   sel: { quantity: 5, size: '85x200cm',  material: 'Lona Standard' } },
+    ],
+    'expositor': [
+      { label: '1 un. · 3×3 Painéis · Sem Iluminação',      sel: { quantity: 1, size: '3x3 Painéis (228x230cm)', accessories: 'Sem Iluminação' } },
+      { label: '1 un. · 5×3 Painéis · Sem Iluminação',      sel: { quantity: 1, size: '5x3 Painéis (380x230cm)', accessories: 'Sem Iluminação' } },
+      { label: '1 un. · 5×3 Painéis · Com Iluminação LED',  sel: { quantity: 1, size: '5x3 Painéis (380x230cm)', accessories: 'Com Iluminação LED' } },
+      { label: '1 un. · 7×3 Painéis · Com Balcão',          sel: { quantity: 1, size: '7x3 Painéis (532x230cm)', accessories: 'Com Balcão' } },
+      { label: '2 un. · 3×3 Painéis · Sem Iluminação',      sel: { quantity: 2, size: '3x3 Painéis (228x230cm)', accessories: 'Sem Iluminação' } },
+    ],
+    'area': [
+      { label: '1m × 1m = 1m²',    sel: { width: 1, height: 1 } },
+      { label: '2m × 1m = 2m²',    sel: { width: 2, height: 1 } },
+      { label: '3m × 2m = 6m²',    sel: { width: 3, height: 2 } },
+      { label: '4m × 3m = 12m²',   sel: { width: 4, height: 3 } },
+      { label: '6m × 3m = 18m²',   sel: { width: 6, height: 3 } },
+    ],
+    'textil': [
+      { label: '5 peças · M · Impressão Digital',    sel: { quantity: 5,   size: 'M',  technique: 'Impressão Digital' } },
+      { label: '10 peças · M · Impressão Digital',   sel: { quantity: 10,  size: 'M',  technique: 'Impressão Digital' } },
+      { label: '20 peças · L · Serigrafia 2 cores',  sel: { quantity: 20,  size: 'L',  technique: 'Serigrafia 2 cores' } },
+      { label: '50 peças · XL · Bordado',            sel: { quantity: 50,  size: 'XL', technique: 'Bordado' } },
+      { label: '100 peças · M · Serigrafia 4 cores', sel: { quantity: 100, size: 'M',  technique: 'Serigrafia 4 cores' } },
+    ],
+  };
+
+  const SIM_FORMULA = {
+    'flyer':         'base_tabela × (PreçoBase ÷ €18) × fator_tamanho × fator_papel × fator_lados',
+    'cartao':        'base_tabela × (PreçoBase ÷ €18) × fator_acabamento × fator_lados  +  extra_cantos',
+    'folheto':       'base_tabela × (PreçoBase ÷ €35) × fator_formato × fator_dobra × fator_papel',
+    'envelope':      'base_tabela × (PreçoBase ÷ €55) × fator_tamanho × fator_gramagem  +  extra_janela',
+    'autocolante':   'base_tabela × (PreçoBase ÷ €12) × fator_tamanho × fator_material × fator_acabamento',
+    'etiqueta':      'base_tabela × (PreçoBase ÷ €22) × fator_tamanho × fator_forma × fator_material',
+    'brinde-unidade':'PreçoBase (por unidade) × Quantidade × desconto_volume',
+    'rollup':        'PreçoBase × ratio_tamanho × fator_material × Quantidade × desconto_volume',
+    'expositor':     '(PreçoBase × ratio_tamanho + acessórios) × Quantidade × desconto_volume',
+    'area':          'MAX(Largura × Altura × PreçoBase,  mínimo €20)',
+    'textil':        '(PreçoBase + extra_impressão × ratio) × fator_tamanho × fator_técnica × Quantidade × desconto_volume',
+  };
+
+  const OPTIONS_BY_TYPE = {
+    'flyer': ['quantities', 'sizes', 'papers', 'sides'],
+    'cartao': ['quantities', 'finishes', 'corners', 'sides'],
+    'folheto': ['quantities', 'sizes', 'folds', 'papers'],
+    'envelope': ['quantities', 'sizes', 'papers', 'windows'],
+    'autocolante': ['quantities', 'sizes', 'materials', 'finishes'],
+    'etiqueta': ['quantities', 'sizes', 'shapes', 'materials'],
+    'brinde-unidade': ['quantities', 'models', 'colors', 'printAreas'],
+    'rollup': ['sizes', 'materials', 'quantities'],
+    'expositor': ['sizes', 'accessories', 'quantities'],
+    'area': ['widths', 'heights', 'finishes', 'thicknesses'],
+    'textil': ['quantities', 'sizes', 'printTypes', 'printTechniques', 'fabrics']
+  };
+
+  const OPTIONS_LABELS = {
+    quantities: 'Quantidades disponíveis', sizes: 'Tamanhos disponíveis',
+    papers: 'Gramagens / Papéis', sides: 'Lados de Impressão',
+    finishes: 'Acabamentos', corners: 'Opções de Cantos', folds: 'Tipos de Dobra',
+    windows: 'Opções de Janela', materials: 'Materiais', shapes: 'Formas',
+    models: 'Modelos', colors: 'Cores', printAreas: 'Áreas de Impressão',
+    accessories: 'Acessórios', widths: 'Larguras (metros)', heights: 'Alturas (metros)',
+    thicknesses: 'Espessuras', printTypes: 'Áreas de Impressão', printTechniques: 'Técnicas',
+    fabrics: 'Tecidos / Materiais'
+  };
+
+  const DEFAULT_OPTIONS = {
+    quantities: ['100', '250', '500', '1000'],
+    sizes: ['A6', 'A5', 'A4'],
+    papers: ['90g', '115g', '135g'],
+    sides: ['Simples', 'Frente e Verso'],
+    finishes: ['Mate', 'Brilhante'],
+    corners: ['Retos', 'Arredondados'],
+    folds: ['Bi-fold', 'Tri-fold'],
+    windows: ['Sem Janela', 'Com Janela'],
+    materials: ['Standard', 'Premium'],
+    shapes: ['Redonda', 'Rectangular'],
+    models: ['Modelo A', 'Modelo B'],
+    colors: ['Branco', 'Preto'],
+    printAreas: ['1 Lado', '2 Lados'],
+    accessories: ['Sem Acessórios'],
+    widths: ['1', '2', '3'],
+    heights: ['1', '2'],
+    thicknesses: ['3mm', '5mm'],
+    printTypes: ['Frente', 'Costas', 'Frente e Costas'],
+    printTechniques: ['Impressão Digital', 'Serigrafia'],
+    fabrics: ['Algodão 100%']
+  };
+
+  function showToast(msg, type = '') {
+    const tc = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<span>${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span> ${msg}`;
+    tc.appendChild(t);
+    setTimeout(() => { t.classList.add('hiding'); setTimeout(() => t.remove(), 300); }, 3000);
+  }
+
+  function initCategories() {
+    const sel = document.getElementById('category');
+    sel.innerHTML = '<option value="">Selecionar...</option>' +
+      DigiDB.getCategories().map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+  }
+
+  function previewImage() {
+    const url = document.getElementById('image').value;
+    const img = document.getElementById('imgPreview');
+    img.src = url || 'https://placehold.co/400x300/f0f2f5/999?text=Sem+Imagem';
+  }
+
+  function onPricingTypeChange() {
+    const type = document.getElementById('pricingType').value;
+    const infoEl = document.getElementById('pricingTypeInfo');
+    if (type && PRICING_TYPE_INFO[type]) {
+      infoEl.textContent = PRICING_TYPE_INFO[type];
+      infoEl.style.display = 'block';
+    } else {
+      infoEl.style.display = 'none';
+    }
+    buildOptionsEditor(type);
+    updateSimulator();
+  }
+
+  function updateSimulator() {
+    const type = document.getElementById('pricingType').value;
+    const startingPrice = parseFloat(document.getElementById('startingPrice').value);
+    const simDiv = document.getElementById('priceSimulator');
+    const simContent = document.getElementById('simContent');
+
+    if (!type || !startingPrice || startingPrice <= 0 || !SIMULATOR_EXAMPLES[type]) {
+      simDiv.style.display = 'none';
+      return;
+    }
+
+    const examples = SIMULATOR_EXAMPLES[type];
+    const subcategory = document.getElementById('subcategory').value.trim() || 'tshirt';
+    const fakeProduct = { pricingType: type, startingPrice, subcategory };
+
+    const hasQty = examples.some(e => e.sel.quantity);
+    const hasArea = examples.some(e => e.sel.width);
+
+    const rows = examples.map(ex => {
+      const net   = DigiDB.calculatePrice(fakeProduct, ex.sel);
+      const iva   = Math.round(net * 0.23 * 100) / 100;
+      const gross = Math.round((net + iva) * 100) / 100;
+
+      let unitCell = '<td class="sim-unit">—</td>';
+      if (ex.sel.quantity) {
+        const u = net / ex.sel.quantity;
+        unitCell = `<td class="sim-unit">€${u < 0.1 ? u.toFixed(4) : u.toFixed(3)}/un.</td>`;
+      } else if (ex.sel.width && ex.sel.height) {
+        const area = ex.sel.width * ex.sel.height;
+        unitCell = `<td class="sim-unit">€${(net / area).toFixed(2)}/m²</td>`;
+      }
+
+      return `<tr>
+        <td>${ex.label}</td>
+        <td style="text-align:right">€${net.toFixed(2)}</td>
+        <td style="text-align:right;color:var(--text-muted)">€${iva.toFixed(2)}</td>
+        <td class="sim-gross">€${gross.toFixed(2)}</td>
+        ${unitCell}
+      </tr>`;
+    }).join('');
+
+    simContent.innerHTML = `
+      <div class="sim-formula">📐 Fórmula: ${SIM_FORMULA[type] || '—'}</div>
+      <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);">
+        <table class="sim-table">
+          <thead>
+            <tr>
+              <th>Cenário</th>
+              <th style="text-align:right">s/IVA</th>
+              <th style="text-align:right">IVA 23%</th>
+              <th style="text-align:right;color:var(--primary)">c/IVA</th>
+              <th style="text-align:right">${hasArea ? 'Por m²' : 'Por un.'}</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">
+        ⚡ Valores simulados com Preço Base = <strong>€${startingPrice.toFixed(2)}</strong>. Altere o valor acima para ver como os preços escalam.
+      </p>`;
+
+    simDiv.style.display = 'block';
+  }
+
+  function buildOptionsEditor(type) {
+    const builder = document.getElementById('optionsBuilder');
+    if (!type || !OPTIONS_BY_TYPE[type]) {
+      builder.innerHTML = '<p style="color:var(--text-muted);font-size:14px;">Selecione primeiro o Tipo de Cálculo de Preço.</p>';
+      return;
+    }
+
+    const fields = OPTIONS_BY_TYPE[type];
+    builder.innerHTML = fields.map(field => {
+      const current = tagInputsState[field] || (editingId ? [] : [...(DEFAULT_OPTIONS[field] || [])]);
+      tagInputsState[field] = current;
+      return buildTagInput(field, OPTIONS_LABELS[field] || field, current);
+    }).join('');
+
+    // Attach events
+    fields.forEach(field => {
+      const input = document.getElementById(`tag_input_${field}`);
+      if (input) {
+        input.addEventListener('keydown', e => {
+          if ((e.key === 'Enter' || e.key === ',') && input.value.trim()) {
+            e.preventDefault();
+            addTag(field, input.value.trim());
+            input.value = '';
+          } else if (e.key === 'Backspace' && !input.value && tagInputsState[field]?.length > 0) {
+            removeTag(field, tagInputsState[field].length - 1);
+          }
+        });
+        // Click on wrapper focuses input
+        document.getElementById(`tag_wrap_${field}`).addEventListener('click', () => input.focus());
+      }
+    });
+  }
+
+  function buildTagInput(field, label, values) {
+    const tagsHtml = values.map((v, i) =>
+      `<span class="tag">${v}<span class="tag-remove" onclick="removeTag('${field}', ${i})">×</span></span>`
+    ).join('');
+    return `
+      <div class="form-group">
+        <label>${label}</label>
+        <div class="tag-input-wrap" id="tag_wrap_${field}">
+          ${tagsHtml}
+          <input class="tag-input" id="tag_input_${field}" placeholder="Escrever e Enter..." />
+        </div>
+        <div class="hint">Prima Enter ou vírgula para adicionar. Clique × para remover.</div>
+      </div>`;
+  }
+
+  function addTag(field, value) {
+    if (!tagInputsState[field]) tagInputsState[field] = [];
+    if (!tagInputsState[field].includes(value)) {
+      tagInputsState[field].push(value);
+      rebuildTagInput(field);
+    }
+  }
+
+  function removeTag(field, index) {
+    tagInputsState[field].splice(index, 1);
+    rebuildTagInput(field);
+  }
+
+  function rebuildTagInput(field) {
+    const wrap = document.getElementById(`tag_wrap_${field}`);
+    if (!wrap) return;
+    const values = tagInputsState[field] || [];
+    const tagsHtml = values.map((v, i) =>
+      `<span class="tag">${v}<span class="tag-remove" onclick="removeTag('${field}', ${i})">×</span></span>`
+    ).join('');
+    const inputEl = document.createElement('input');
+    inputEl.className = 'tag-input';
+    inputEl.id = `tag_input_${field}`;
+    inputEl.placeholder = 'Escrever e Enter...';
+    wrap.innerHTML = tagsHtml;
+    wrap.appendChild(inputEl);
+    inputEl.addEventListener('keydown', e => {
+      if ((e.key === 'Enter' || e.key === ',') && inputEl.value.trim()) {
+        e.preventDefault();
+        addTag(field, inputEl.value.trim());
+        inputEl.value = '';
+      } else if (e.key === 'Backspace' && !inputEl.value && tagInputsState[field]?.length > 0) {
+        removeTag(field, tagInputsState[field].length - 1);
+      }
+    });
+    inputEl.focus();
+  }
+
+  function collectOptions(type) {
+    const fields = OPTIONS_BY_TYPE[type] || [];
+    const options = {};
+    fields.forEach(field => {
+      const vals = tagInputsState[field] || [];
+      // Convert numeric fields
+      if (['quantities', 'widths', 'heights'].includes(field)) {
+        options[field] = vals.map(v => isNaN(v) ? v : Number(v));
+      } else {
+        options[field] = vals;
+      }
+    });
+    return options;
+  }
+
+  function saveProduct(e) {
+    if (e) e.preventDefault();
+
+    const name = document.getElementById('name').value.trim();
+    const category = document.getElementById('category').value;
+    const subcategory = document.getElementById('subcategory').value.trim();
+    const description = document.getElementById('description').value.trim();
+    const pricingType = document.getElementById('pricingType').value;
+    const startingPrice = parseFloat(document.getElementById('startingPrice').value);
+    const priceUnit = document.getElementById('priceUnit').value.trim();
+    const imageVal = document.getElementById('image').value.trim();
+    const active = document.getElementById('active').checked;
+    const featured = document.getElementById('featured').checked;
+
+    if (!name || !category || !description || !pricingType || isNaN(startingPrice)) {
+      showToast('Por favor, preencha todos os campos obrigatórios.', 'error');
+      return;
+    }
+
+    const catName = category.replace(/-/g, ' ');
+    const image = imageVal || `https://placehold.co/600x400/FF4500/white?text=${encodeURIComponent(name)}`;
+    const options = collectOptions(pricingType);
+
+    const data = { name, category, subcategory, description, pricingType, startingPrice, priceUnit, image, active, featured, options };
+
+    const saveBtn = document.getElementById('saveBtn');
+    const status = document.getElementById('saveStatus');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'A guardar...';
+
+    setTimeout(() => {
+      if (editingId) {
+        DigiDB.updateProduct(editingId, data);
+        status.textContent = '✅ Guardado com sucesso!';
+        status.style.color = 'var(--success)';
+        showToast('Produto atualizado com sucesso!', 'success');
+      } else {
+        DigiDB.createProduct(data);
+        status.textContent = '✅ Produto criado com sucesso!';
+        status.style.color = 'var(--success)';
+        showToast('Produto criado com sucesso!', 'success');
+      }
+      saveBtn.disabled = false;
+      saveBtn.textContent = '💾 Guardar';
+
+      setTimeout(() => window.location.href = 'produtos.html', 1200);
+    }, 400);
+  }
+
+  function loadProduct(id) {
+    const p = DigiDB.getProduct(id);
+    if (!p) {
+      showToast('Produto não encontrado.', 'error');
+      return;
+    }
+
+    editingId = id;
+    document.getElementById('pageTitle').textContent = `Editar: ${p.name}`;
+    document.title = `Editar ${p.name} - DigiCores Admin`;
+
+    document.getElementById('name').value = p.name;
+    document.getElementById('category').value = p.category;
+    document.getElementById('subcategory').value = p.subcategory || '';
+    document.getElementById('description').value = p.description;
+    document.getElementById('pricingType').value = p.pricingType;
+    document.getElementById('startingPrice').value = p.startingPrice;
+    document.getElementById('priceUnit').value = p.priceUnit || '';
+    document.getElementById('image').value = p.image || '';
+    document.getElementById('active').checked = p.active;
+    document.getElementById('featured').checked = p.featured;
+
+    previewImage();
+    onPricingTypeChange();
+
+    // Load existing options into tagInputsState
+    if (p.options && OPTIONS_BY_TYPE[p.pricingType]) {
+      const fields = OPTIONS_BY_TYPE[p.pricingType];
+      fields.forEach(field => {
+        if (p.options[field]) {
+          tagInputsState[field] = p.options[field].map(String);
+        }
+      });
+      buildOptionsEditor(p.pricingType);
+    }
+
+    updateSimulator();
+  }
+
+  // Init
+  initCategories();
+
+  const params = new URLSearchParams(window.location.search);
+  const editId = params.get('id');
+  if (editId) {
+    loadProduct(editId);
+  }
+</script>
+</body>
+</html>
