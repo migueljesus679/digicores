@@ -38,22 +38,22 @@
 
       <div>
         <h3 style="margin-bottom:20px;">📬 Envie-nos uma mensagem</h3>
-        <form onsubmit="submitContact(event)">
+        <form id="contactForm" onsubmit="submitContact(event)">
           <div class="form-group">
             <label>Nome *</label>
-            <input type="text" placeholder="O seu nome" required />
+            <input type="text" id="cf_name" placeholder="O seu nome" required />
           </div>
           <div class="form-group">
             <label>Email *</label>
-            <input type="email" placeholder="email@empresa.pt" required />
+            <input type="email" id="cf_email" placeholder="email@empresa.pt" required />
           </div>
           <div class="form-group">
             <label>Telefone</label>
-            <input type="tel" placeholder="+351 900 000 000" />
+            <input type="tel" id="cf_phone" placeholder="+351 900 000 000" />
           </div>
           <div class="form-group">
             <label>Assunto</label>
-            <select>
+            <select id="cf_subject">
               <option>Pedido de Orçamento</option>
               <option>Dúvida sobre Produto</option>
               <option>Encomenda Existente</option>
@@ -62,12 +62,15 @@
           </div>
           <div class="form-group">
             <label>Mensagem *</label>
-            <textarea placeholder="Descreva o seu projeto ou dúvida..." required style="min-height:120px;width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+            <textarea id="cf_message" placeholder="Descreva o seu projeto ou dúvida..." required style="min-height:120px;width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:14px;resize:vertical;"></textarea>
           </div>
-          <button type="submit" class="btn btn-primary btn-block">Enviar Mensagem</button>
+          <button type="submit" id="submitBtn" class="btn btn-primary btn-block">Enviar Mensagem</button>
         </form>
         <div id="successMsg" style="display:none;background:#d4edda;color:#155724;padding:14px;border-radius:var(--radius);margin-top:12px;font-weight:600;">
           ✅ Mensagem enviada! Entraremos em contacto em breve.
+        </div>
+        <div id="errorMsg" style="display:none;background:#f8d7da;color:#721c24;padding:14px;border-radius:var(--radius);margin-top:12px;font-weight:600;">
+          ❌ Erro ao enviar. Tente novamente ou contacte-nos diretamente por email.
         </div>
       </div>
 
@@ -78,8 +81,7 @@
             <div style="font-size:28px;">📧</div>
             <div>
               <div style="font-weight:700;margin-bottom:4px;">Email</div>
-              <div style="color:var(--text-muted);">geral@digicores.pt</div>
-              <div style="color:var(--text-muted);">orçamentos@digicores.pt</div>
+              <div style="color:var(--text-muted);">contasegura@gmail.com</div>
             </div>
           </div>
           <div style="display:flex;gap:14px;align-items:flex-start;">
@@ -129,11 +131,39 @@
 <script src="js/db.js"></script>
 <script>
   document.getElementById('cartCount').textContent = DigiDB.getCart().length;
-  function submitContact(e) {
+
+  async function submitContact(e) {
     e.preventDefault();
-    document.getElementById('successMsg').style.display = 'block';
-    e.target.reset();
-    e.target.style.display = 'none';
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'A enviar...';
+    document.getElementById('errorMsg').style.display = 'none';
+
+    const body = {
+      name:    document.getElementById('cf_name').value.trim(),
+      email:   document.getElementById('cf_email').value.trim(),
+      phone:   document.getElementById('cf_phone').value.trim(),
+      subject: document.getElementById('cf_subject').value,
+      message: document.getElementById('cf_message').value.trim()
+    };
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro desconhecido');
+
+      document.getElementById('contactForm').style.display = 'none';
+      document.getElementById('successMsg').style.display = 'block';
+    } catch (err) {
+      document.getElementById('errorMsg').style.display = 'block';
+      document.getElementById('errorMsg').textContent = '❌ ' + (err.message || 'Erro ao enviar. Tente novamente.');
+      btn.disabled = false;
+      btn.textContent = 'Enviar Mensagem';
+    }
   }
 </script>
 </body>

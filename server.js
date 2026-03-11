@@ -8,7 +8,13 @@
 
 const express = require('express');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || 'sk_test_51T9N5LAr4sl9qN1uYUdJYsVQiOuETIv2QX8ta9ofoXM0kdAUSg6NAuJ1IcX9hhOHXmSn5CXXJyk1JUyjI3QucFpC00eb65sAU4');
+const nodemailer = require('nodemailer');
 const path = require('path');
+
+// Email de destino (onde chegam as mensagens do formulário)
+const CONTACT_EMAIL = process.env.CONTACT_EMAIL || 'contasegura@gmail.com';
+const EMAIL_PASS    = process.env.EMAIL_PASS;     // App Password do Gmail (variável de ambiente)
+require('dotenv').config();
 
 const app = express();
 app.use(express.json());
@@ -16,6 +22,58 @@ app.use(express.static(path.join(__dirname)));  // serve os ficheiros HTML/CSS/J
 
 // ── Health check ─────────────────────────────
 app.get('/api/health', (_, res) => res.json({ ok: true }));
+
+// ── Formulário de Contacto ────────────────────
+app.post('/api/contact', async (req, res) => {
+  const { name, email, phone, subject, message } = req.body;
+  if (!name || !email || !message) {
+    return res.status(400).json({ error: 'Nome, email e mensagem são obrigatórios.' });
+  }
+
+  if (!EMAIL_PASS) {
+    // Sem credenciais configuradas: aceita mas avisa (útil em dev local)
+    console.log(`📧 Contacto recebido de ${name} <${email}>: ${subject}`);
+    return res.json({ ok: true, warn: 'EMAIL_PASS não configurado — email não enviado.' });
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: CONTACT_EMAIL, pass: EMAIL_PASS }
+    });
+
+    await transporter.sendMail({
+      from: `"DigiCores Website" <${CONTACT_EMAIL}>`,
+      to: CONTACT_EMAIL,
+      replyTo: `"${name}" <${email}>`,
+      subject: `[DigiCores] ${subject} — ${name}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+          <h2 style="color:#FF4500;border-bottom:2px solid #FF4500;padding-bottom:8px;">
+            Nova Mensagem — DigiCores
+          </h2>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+            <tr><td style="padding:8px;font-weight:700;width:120px;">Nome</td><td style="padding:8px;">${name}</td></tr>
+            <tr style="background:#f8f9fa;"><td style="padding:8px;font-weight:700;">Email</td><td style="padding:8px;"><a href="mailto:${email}">${email}</a></td></tr>
+            <tr><td style="padding:8px;font-weight:700;">Telefone</td><td style="padding:8px;">${phone || '—'}</td></tr>
+            <tr style="background:#f8f9fa;"><td style="padding:8px;font-weight:700;">Assunto</td><td style="padding:8px;">${subject}</td></tr>
+          </table>
+          <div style="background:#f8f9fa;border-left:4px solid #FF4500;padding:16px;border-radius:4px;">
+            <p style="font-weight:700;margin-bottom:8px;">Mensagem:</p>
+            <p style="white-space:pre-wrap;margin:0;">${message}</p>
+          </div>
+          <p style="color:#999;font-size:12px;margin-top:20px;">
+            Enviado pelo formulário de contacto de digicores.pt
+          </p>
+        </div>`
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Erro ao enviar email:', err.message);
+    res.status(500).json({ error: 'Erro ao enviar email. Verifique as credenciais Gmail.' });
+  }
+});
 
 // ── Criar PaymentIntent (Cartão) ─────────────
 app.post('/api/create-payment-intent', async (req, res) => {
