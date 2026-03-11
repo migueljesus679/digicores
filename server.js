@@ -6,6 +6,8 @@
 // Abrir no browser: http://localhost:3000
 // =============================================
 
+require('dotenv').config();
+
 const express = require('express');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || 'sk_test_51T9N5LAr4sl9qN1uYUdJYsVQiOuETIv2QX8ta9ofoXM0kdAUSg6NAuJ1IcX9hhOHXmSn5CXXJyk1JUyjI3QucFpC00eb65sAU4');
 const nodemailer = require('nodemailer');
@@ -15,7 +17,6 @@ const fs = require('fs');
 // Email de destino (onde chegam as mensagens do formulário)
 const CONTACT_EMAIL = process.env.CONTACT_EMAIL || 'coontasegura@gmail.com';
 const EMAIL_PASS    = process.env.EMAIL_PASS;     // App Password do Gmail (variável de ambiente)
-require('dotenv').config();
 
 const app = express();
 app.use(express.json());
