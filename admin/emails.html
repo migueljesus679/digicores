@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Emails Recebidos - DigiCores Admin</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .email-status-sent    { color: #16a34a; font-weight: 600; }
+    .email-status-failed  { color: #dc2626; font-weight: 600; }
+    .email-status-no_config { color: #d97706; font-weight: 600; }
+    .email-message-preview {
+      max-width: 300px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      max-width: 620px;
+      width: 95%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 16px;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      color: var(--text-muted);
+      line-height: 1;
+    }
+    .modal-close:hover { color: var(--text); }
+    .detail-row {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 8px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .detail-label { font-weight: 600; color: var(--text-muted); }
+    .detail-message {
+      margin-top: 16px;
+      background: var(--bg);
+      border-left: 4px solid var(--primary);
+      padding: 16px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .msg-id {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: monospace;
+      word-break: break-all;
+    }
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+    .dot-sent    { background: #16a34a; }
+    .dot-failed  { background: #dc2626; }
+    .dot-no_config { background: #d97706; }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  </style>
+</head>
+<body class="admin-body">
+<div class="admin-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-logo">
+      <div class="logo">Digi<span>Cores</span></div>
+      <small>Back Office</small>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section">Menu</div>
+      <a href="dashboard.html"><span class="nav-icon">📊</span><span>Dashboard</span></a>
+      <a href="produtos.html"><span class="nav-icon">📦</span><span>Produtos</span></a>
+      <a href="produto-form.html"><span class="nav-icon">➕</span><span>Novo Produto</span></a>
+      <a href="emails.html" class="active"><span class="nav-icon">📧</span><span>Emails</span></a>
+      <div class="sidebar-section">Loja</div>
+      <a href="../index.html" target="_blank"><span class="nav-icon">🌐</span><span>Ver Loja</span></a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="sidebar-user-info" id="userName">Administrador</div>
+      <div class="sidebar-user-role">Admin</div>
+      <button class="sidebar-logout" onclick="DigiAuth.logout()">Terminar Sessão</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <div class="admin-page-title">Emails Recebidos</div>
+      <div class="admin-topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="loadEmails()">↻ Atualizar</button>
+      </div>
+    </div>
+
+    <div class="admin-content">
+
+      <!-- Stats bar -->
+      <div class="stats-grid" id="statsBar" style="margin-bottom:24px;"></div>
+
+      <!-- Filters -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px;align-items:center;">
+        <input type="search" id="searchInput" placeholder="Pesquisar por nome, email ou assunto..."
+          style="flex:1;min-width:200px;padding:9px 16px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;" />
+        <select id="statusFilter"
+          style="padding:9px 16px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;">
+          <option value="">Todos os estados</option>
+          <option value="sent">Enviados</option>
+          <option value="failed">Falhados</option>
+          <option value="no_config">Sem configuração</option>
+        </select>
+        <span id="countLabel" style="font-size:14px;color:var(--text-muted);white-space:nowrap;"></span>
+      </div>
+
+      <!-- Table -->
+      <div class="admin-card">
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Data / Hora</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Assunto</th>
+                <th>Mensagem</th>
+                <th>Estado</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="emailsBody"></tbody>
+          </table>
+        </div>
+        <div id="emptyState" class="empty-state" style="display:none;">
+          <div class="empty-icon">📭</div>
+          <p>Nenhum email encontrado.</p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Modal de detalhe -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal-box" id="modalBox">
+    <div class="modal-header">
+      <h3 id="modalTitle">Detalhe do Email</h3>
+      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="../js/auth.js"></script>
+<script>
+  if (!DigiAuth.requireAdminFromAdmin()) { /* redirected */ }
+  const session = DigiAuth.getSession();
+  if (session) document.getElementById('userName').textContent = session.name;
+
+  let allEmails = [];
+
+  function showToast(msg, type = '') {
+    const tc = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> ${msg}`;
+    tc.appendChild(t);
+    setTimeout(() => { t.classList.add('hiding'); setTimeout(() => t.remove(), 300); }, 3000);
+  }
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('pt-PT', { day:'2-digit', month:'2-digit', year:'numeric' })
+      + ' ' + d.toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  function statusLabel(status) {
+    const map = { sent: 'Enviado', failed: 'Falhado', no_config: 'Sem config.' };
+    return map[status] || status;
+  }
+
+  function statusClass(status) {
+    return `email-status-${status}`;
+  }
+
+  function renderStats() {
+    const total  = allEmails.length;
+    const sent   = allEmails.filter(e => e.status === 'sent').length;
+    const failed = allEmails.filter(e => e.status === 'failed').length;
+    const noConf = allEmails.filter(e => e.status === 'no_config').length;
+
+    document.getElementById('statsBar').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <div><div class="stat-card-value">${total}</div><div class="stat-card-label">Total</div></div>
+          <div class="stat-card-icon orange">📧</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <div><div class="stat-card-value">${sent}</div><div class="stat-card-label">Enviados</div></div>
+          <div class="stat-card-icon green">✅</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <div><div class="stat-card-value">${failed}</div><div class="stat-card-label">Falhados</div></div>
+          <div class="stat-card-icon" style="background:#fee2e2;color:#dc2626;">❌</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top">
+          <div><div class="stat-card-value">${noConf}</div><div class="stat-card-label">Sem Config.</div></div>
+          <div class="stat-card-icon" style="background:#fef3c7;color:#d97706;">⚠️</div>
+        </div>
+      </div>`;
+  }
+
+  function renderTable(emails) {
+    const tbody = document.getElementById('emailsBody');
+    const empty = document.getElementById('emptyState');
+    document.getElementById('countLabel').textContent = `${emails.length} resultado(s)`;
+
+    if (!emails.length) {
+      tbody.innerHTML = '';
+      empty.style.display = '';
+      return;
+    }
+    empty.style.display = 'none';
+
+    tbody.innerHTML = emails.map(e => `
+      <tr>
+        <td style="white-space:nowrap;font-size:13px;">${formatDate(e.timestamp)}</td>
+        <td style="font-weight:600;">${escHtml(e.name)}</td>
+        <td><a href="mailto:${escHtml(e.email)}" style="color:var(--primary);">${escHtml(e.email)}</a></td>
+        <td>${escHtml(e.subject || '—')}</td>
+        <td><div class="email-message-preview">${escHtml(e.message)}</div></td>
+        <td>
+          <span class="${statusClass(e.status)}">
+            <span class="status-dot dot-${e.status}"></span>${statusLabel(e.status)}
+          </span>
+        </td>
+        <td>
+          <div class="table-actions">
+            <button class="action-btn action-btn-edit" onclick="openDetail('${e.id}')">Ver</button>
+            <button class="action-btn action-btn-delete" onclick="deleteEmail('${e.id}')">Apagar</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  function applyFilters() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+    const filtered = allEmails.filter(e => {
+      const matchSearch = !search ||
+        e.name.toLowerCase().includes(search) ||
+        e.email.toLowerCase().includes(search) ||
+        (e.subject || '').toLowerCase().includes(search) ||
+        e.message.toLowerCase().includes(search);
+      const matchStatus = !status || e.status === status;
+      return matchSearch && matchStatus;
+    });
+    renderTable(filtered);
+  }
+
+  async function loadEmails() {
+    try {
+      const res = await fetch('/api/emails');
+      if (!res.ok) throw new Error('Erro ao carregar emails');
+      allEmails = await res.json();
+      renderStats();
+      applyFilters();
+    } catch (err) {
+      showToast('Erro ao carregar emails: ' + err.message, 'error');
+    }
+  }
+
+  async function deleteEmail(id) {
+    if (!confirm('Apagar este registo de email?')) return;
+    try {
+      const res = await fetch(`/api/emails/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Erro ao apagar');
+      allEmails = allEmails.filter(e => e.id !== id);
+      renderStats();
+      applyFilters();
+      showToast('Registo apagado.', 'success');
+    } catch (err) {
+      showToast('Erro: ' + err.message, 'error');
+    }
+  }
+
+  function openDetail(id) {
+    const e = allEmails.find(x => x.id === id);
+    if (!e) return;
+
+    const statusColors = { sent: '#16a34a', failed: '#dc2626', no_config: '#d97706' };
+    const statusLabels = { sent: '✅ Enviado com sucesso', failed: '❌ Falhou ao enviar', no_config: '⚠️ Email não enviado (sem configuração)' };
+
+    document.getElementById('modalTitle').textContent = `Email de ${escHtml(e.name)}`;
+    document.getElementById('modalContent').innerHTML = `
+      <div class="detail-row"><span class="detail-label">Data / Hora</span><span>${formatDate(e.timestamp)}</span></div>
+      <div class="detail-row"><span class="detail-label">Estado</span>
+        <span style="color:${statusColors[e.status]};font-weight:600;">${statusLabels[e.status] || e.status}</span>
+      </div>
+      <div class="detail-row"><span class="detail-label">Nome</span><span>${escHtml(e.name)}</span></div>
+      <div class="detail-row"><span class="detail-label">Email</span>
+        <span><a href="mailto:${escHtml(e.email)}" style="color:var(--primary);">${escHtml(e.email)}</a></span>
+      </div>
+      <div class="detail-row"><span class="detail-label">Telefone</span><span>${escHtml(e.phone || '—')}</span></div>
+      <div class="detail-row"><span class="detail-label">Assunto</span><span>${escHtml(e.subject || '—')}</span></div>
+      ${e.messageId ? `<div class="detail-row"><span class="detail-label">Message-ID</span><span class="msg-id">${escHtml(e.messageId)}</span></div>` : ''}
+      ${e.error ? `<div class="detail-row"><span class="detail-label">Erro</span><span style="color:#dc2626;">${escHtml(e.error)}</span></div>` : ''}
+      <div style="margin-top:16px;font-weight:600;font-size:14px;">Mensagem:</div>
+      <div class="detail-message">${escHtml(e.message)}</div>
+      <div style="margin-top:20px;text-align:right;">
+        <a href="mailto:${escHtml(e.email)}?subject=Re: ${encodeURIComponent(e.subject || 'Contacto DigiCores')}"
+           class="btn btn-primary btn-sm">↩ Responder por Email</a>
+      </div>`;
+
+    document.getElementById('modalOverlay').classList.add('open');
+  }
+
+  function closeModal(event) {
+    if (event.target === document.getElementById('modalOverlay')) closeModalDirect();
+  }
+  function closeModalDirect() {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalDirect(); });
+
+  function escHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  document.getElementById('searchInput').addEventListener('input', applyFilters);
+  document.getElementById('statusFilter').addEventListener('change', applyFilters);
+
+  loadEmails();
+</script>
+</body>
+</html>

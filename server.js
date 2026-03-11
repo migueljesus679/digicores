@@ -10,6 +10,7 @@ const express = require('express');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || 'sk_test_51T9N5LAr4sl9qN1uYUdJYsVQiOuETIv2QX8ta9ofoXM0kdAUSg6NAuJ1IcX9hhOHXmSn5CXXJyk1JUyjI3QucFpC00eb65sAU4');
 const nodemailer = require('nodemailer');
 const path = require('path');
+const fs = require('fs');
 
 // Email de destino (onde chegam as mensagens do formulário)
 const CONTACT_EMAIL = process.env.CONTACT_EMAIL || 'coontasegura@gmail.com';
@@ -19,6 +20,26 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));  // serve os ficheiros HTML/CSS/JS
+
+// ── Log de Emails ─────────────────────────────
+const EMAIL_LOG_FILE = path.join(__dirname, 'emails-log.json');
+
+function readEmailLog() {
+  try {
+    if (!fs.existsSync(EMAIL_LOG_FILE)) return [];
+    return JSON.parse(fs.readFileSync(EMAIL_LOG_FILE, 'utf8'));
+  } catch { return []; }
+}
+
+function writeEmailLog(entries) {
+  fs.writeFileSync(EMAIL_LOG_FILE, JSON.stringify(entries, null, 2), 'utf8');
+}
+
+function logEmail(entry) {
+  const entries = readEmailLog();
+  entries.unshift({ id: Date.now().toString(), timestamp: new Date().toISOString(), ...entry });
+  writeEmailLog(entries);
+}
 
 // ── Health check ─────────────────────────────
 app.get('/api/health', (_, res) => res.json({ ok: true }));
@@ -33,6 +54,7 @@ app.post('/api/contact', async (req, res) => {
   if (!EMAIL_PASS) {
     // Sem credenciais configuradas: aceita mas avisa (útil em dev local)
     console.log(`📧 Contacto recebido de ${name} <${email}>: ${subject}`);
+    logEmail({ name, email, phone: phone || '', subject, message, status: 'no_config', error: 'EMAIL_PASS não configurado' });
     return res.json({ ok: true, warn: 'EMAIL_PASS não configurado — email não enviado.' });
   }
 
@@ -42,7 +64,7 @@ app.post('/api/contact', async (req, res) => {
       auth: { user: CONTACT_EMAIL, pass: EMAIL_PASS }
     });
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"DigiCores Website" <${CONTACT_EMAIL}>`,
       to: CONTACT_EMAIL,
       replyTo: `"${name}" <${email}>`,
@@ -68,11 +90,24 @@ app.post('/api/contact', async (req, res) => {
         </div>`
     });
 
+    logEmail({ name, email, phone: phone || '', subject, message, status: 'sent', messageId: info.messageId });
     res.json({ ok: true });
   } catch (err) {
     console.error('Erro ao enviar email:', err.message);
+    logEmail({ name, email, phone: phone || '', subject, message, status: 'failed', error: err.message });
     res.status(500).json({ error: 'Erro ao enviar email. Verifique as credenciais Gmail.' });
   }
+});
+
+// ── Admin: Log de Emails ──────────────────────
+app.get('/api/emails', (_, res) => {
+  res.json(readEmailLog());
+});
+
+app.delete('/api/emails/:id', (req, res) => {
+  const entries = readEmailLog().filter(e => e.id !== req.params.id);
+  writeEmailLog(entries);
+  res.json({ ok: true });
 });
 
 // ── Criar PaymentIntent (Cartão) ─────────────
