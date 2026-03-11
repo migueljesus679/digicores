@@ -61,7 +61,9 @@ app.post('/api/contact', async (req, res) => {
 
   try {
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
       auth: { user: CONTACT_EMAIL, pass: EMAIL_PASS },
       connectionTimeout: 10000,
       greetingTimeout: 10000,
