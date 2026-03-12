@@ -28,6 +28,15 @@
     .tag-price-badge:hover { background: rgba(255,69,0,0.22); }
     .tag-price-badge.no-price { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.15); color: var(--text-muted); }
     .tag-price-input { width: 58px; font-size: 11px; padding: 1px 4px; border: 1.5px solid var(--primary); border-radius: 3px; outline: none; font-family: inherit; }
+    /* ── Two-field add row (shown when mode != 'none') ── */
+    .tag-wrap-readonly { cursor: default; min-height: 38px; }
+    .tag-wrap-readonly:empty::after { content: 'Nenhum valor ainda...'; color: var(--text-muted); font-size: 13px; padding: 4px 2px; }
+    .tag-wrap-readonly:focus-within { border-color: var(--border); box-shadow: none; }
+    .tag-add-row { display: flex; align-items: flex-end; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .tag-add-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 90px; }
+    .tag-add-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .tag-value-input, .tag-price-input-add { border: 1.5px solid var(--border); border-radius: var(--radius); padding: 7px 10px; font-size: 13px; font-family: inherit; background: var(--white); color: var(--text); transition: border-color 0.2s ease; width: 100%; }
+    .tag-value-input:focus, .tag-price-input-add:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,69,0,0.1); }
     .sim-table { width:100%; border-collapse:collapse; font-size:12.5px; }
     .sim-table thead tr { background:var(--bg-2); }
     .sim-table th { padding:7px 10px; font-weight:600; color:var(--text-muted); white-space:nowrap; }
@@ -535,13 +544,35 @@
     const mode = fieldPriceModes[field] || 'none';
     const modeLabelMap = { none: '💰 Preços OFF', multiplier: '× Multiplicador', absolute: '€ Absoluto' };
     const modeCls = mode === 'none' ? '' : mode === 'multiplier' ? 'mode-multiplier' : 'mode-absolute';
-    const placeholder = mode === 'none'
-      ? 'Escrever e Enter...'
-      : mode === 'absolute' ? 'valor:preço (ex: 100:18.50)' : 'valor:mult (ex: A5:1.6)';
-    const hint = mode === 'none'
-      ? 'Prima Enter ou vírgula para adicionar. Clique × para remover.'
-      : `Use <strong>valor:${mode === 'absolute' ? 'preço</strong> (ex: 100:18.50 ou A5:28)' : 'multiplicador</strong> (ex: A5:1.6 ou Mate:1)'}. Clique no badge laranja para editar o preço.`;
     const tagsHtml = values.map((v, i) => buildSingleTag(field, v, i)).join('');
+
+    let inputAreaHtml, hintHtml;
+    if (mode === 'none') {
+      inputAreaHtml = `
+        <div class="tag-input-wrap" id="tag_wrap_${field}">
+          ${tagsHtml}
+          <input class="tag-input" id="tag_input_${field}" placeholder="Escrever e Enter..." />
+        </div>`;
+      hintHtml = `<div class="hint">Prima Enter ou vírgula para adicionar. Clique × para remover.</div>`;
+    } else {
+      const priceLabel = mode === 'absolute' ? 'Preço (€)' : 'Multiplicador (×)';
+      const pricePlaceholder = mode === 'absolute' ? 'ex: 18.50' : 'ex: 1.60';
+      inputAreaHtml = `
+        <div class="tag-input-wrap tag-wrap-readonly" id="tag_wrap_${field}">${tagsHtml}</div>
+        <div class="tag-add-row" id="tag_add_row_${field}">
+          <div class="tag-add-field">
+            <label class="tag-add-label">Nome / Valor</label>
+            <input type="text" class="tag-value-input" id="tag_input_${field}" placeholder="Ex: A5, 20m, Mate..." />
+          </div>
+          <div class="tag-add-field" style="max-width:140px;">
+            <label class="tag-add-label">${priceLabel}</label>
+            <input type="number" class="tag-price-input-add" id="tag_price_${field}" step="0.01" min="0" placeholder="${pricePlaceholder}" />
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" style="align-self:flex-end;white-space:nowrap;" onclick="addTagFromRow('${field}')">+ Adicionar</button>
+        </div>`;
+      hintHtml = `<div class="hint">Preencha o nome e o ${mode === 'absolute' ? 'preço' : 'multiplicador'}, depois clique <strong>Adicionar</strong>. Clique no valor para editar o preço.</div>`;
+    }
+
     return `
       <div class="form-group" id="field_group_${field}">
         <div class="field-group-header">
@@ -552,11 +583,8 @@
             <button type="button" class="btn-field-remove" onclick="removeField('${field}')" title="Remover campo">✕ Remover</button>
           </div>
         </div>
-        <div class="tag-input-wrap" id="tag_wrap_${field}">
-          ${tagsHtml}
-          <input class="tag-input" id="tag_input_${field}" placeholder="${placeholder}" />
-        </div>
-        <div class="hint">${hint}</div>
+        ${inputAreaHtml}
+        ${hintHtml}
       </div>`;
   }
 
@@ -640,19 +668,58 @@
   }
 
   function attachTagInputEvents(field) {
+    const mode  = fieldPriceModes[field] || 'none';
     const input = document.getElementById(`tag_input_${field}`);
     const wrap  = document.getElementById(`tag_wrap_${field}`);
     if (!input) return;
-    input.addEventListener('keydown', e => {
-      if ((e.key === 'Enter' || e.key === ',') && input.value.trim()) {
-        e.preventDefault();
-        addTag(field, input.value.trim());
-        input.value = '';
-      } else if (e.key === 'Backspace' && !input.value && tagInputsState[field]?.length > 0) {
-        removeTag(field, tagInputsState[field].length - 1);
+
+    if (mode !== 'none') {
+      // Two-field mode: Enter on name field → focus price field; Enter on price field → add
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const priceInput = document.getElementById(`tag_price_${field}`);
+          if (priceInput) priceInput.focus();
+        } else if (e.key === 'Backspace' && !input.value && tagInputsState[field]?.length > 0) {
+          removeTag(field, tagInputsState[field].length - 1);
+        }
+      });
+      const priceInput = document.getElementById(`tag_price_${field}`);
+      if (priceInput) {
+        priceInput.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); addTagFromRow(field); }
+        });
       }
-    });
-    if (wrap) wrap.addEventListener('click', () => input.focus());
+    } else {
+      // Simple mode: Enter or comma adds the tag
+      input.addEventListener('keydown', e => {
+        if ((e.key === 'Enter' || e.key === ',') && input.value.trim()) {
+          e.preventDefault();
+          addTag(field, input.value.trim());
+          input.value = '';
+        } else if (e.key === 'Backspace' && !input.value && tagInputsState[field]?.length > 0) {
+          removeTag(field, tagInputsState[field].length - 1);
+        }
+      });
+      if (wrap) wrap.addEventListener('click', () => input.focus());
+    }
+  }
+
+  function addTagFromRow(field) {
+    const valueInput = document.getElementById(`tag_input_${field}`);
+    const priceInput = document.getElementById(`tag_price_${field}`);
+    if (!valueInput) return;
+    const rawValue = valueInput.value.trim();
+    if (!rawValue) { valueInput.focus(); return; }
+    const priceVal = priceInput ? parseFloat(priceInput.value) : NaN;
+    if (!isNaN(priceVal) && priceVal >= 0) {
+      addTag(field, `${rawValue}:${priceVal}`);
+    } else {
+      addTag(field, rawValue);
+    }
+    valueInput.value = '';
+    if (priceInput) priceInput.value = '';
+    valueInput.focus();
   }
 
   function addTag(field, rawValue) {
@@ -701,16 +768,25 @@
     const values = tagInputsState[field] || [];
     const tagsHtml = values.map((v, i) => buildSingleTag(field, v, i)).join('');
     const mode = fieldPriceModes[field] || 'none';
-    const placeholder = mode === 'none' ? 'Escrever e Enter...'
-      : mode === 'absolute' ? 'valor:preço (ex: 100:18.50)' : 'valor:mult (ex: A5:1.6)';
-    const inputEl = document.createElement('input');
-    inputEl.className = 'tag-input';
-    inputEl.id = `tag_input_${field}`;
-    inputEl.placeholder = placeholder;
-    wrap.innerHTML = tagsHtml;
-    wrap.appendChild(inputEl);
-    attachTagInputEvents(field);
-    inputEl.focus();
+
+    if (mode !== 'none') {
+      // Tags-only wrap; the add row (with inputs) stays outside
+      wrap.innerHTML = tagsHtml;
+      // Re-attach events for the add row inputs (they survived the innerHTML update)
+      attachTagInputEvents(field);
+      const inp = document.getElementById(`tag_input_${field}`);
+      if (inp) inp.focus();
+    } else {
+      // Simple mode: tags + inline input inside the wrap
+      const inputEl = document.createElement('input');
+      inputEl.className = 'tag-input';
+      inputEl.id = `tag_input_${field}`;
+      inputEl.placeholder = 'Escrever e Enter...';
+      wrap.innerHTML = tagsHtml;
+      wrap.appendChild(inputEl);
+      attachTagInputEvents(field);
+      inputEl.focus();
+    }
   }
 
   function removeField(field) {
