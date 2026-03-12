@@ -6,12 +6,6 @@
   <title>Produto - DigiCores Admin</title>
   <link rel="stylesheet" href="../css/style.css" />
   <style>
-    .options-editor { border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-    .options-tab-bar { display: flex; border-bottom: 1.5px solid var(--border); background: var(--bg); }
-    .options-tab { padding: 10px 16px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; background: none; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1.5px; }
-    .options-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--white); }
-    .options-panel { padding: 16px; display: none; }
-    .options-panel.active { display: block; }
     .tag-input-wrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border: 1.5px solid var(--border); border-radius: var(--radius); min-height: 42px; cursor: text; align-items: flex-start; }
     .tag-input-wrap:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,69,0,0.1); }
     .tag { display: inline-flex; align-items: center; gap: 4px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 500; }
@@ -19,6 +13,13 @@
     .tag-remove:hover { color: var(--danger); }
     .tag-input { border: none; outline: none; font-size: 13px; min-width: 120px; flex: 1; font-family: inherit; padding: 2px 4px; }
     .pricing-type-info { background: var(--bg); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; color: var(--text-muted); margin-top: 8px; border-left: 3px solid var(--primary); }
+    .field-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .field-group-header label { margin-bottom: 0 !important; }
+    .btn-field-remove { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 14px; padding: 2px 7px; border-radius: 4px; line-height: 1; transition: var(--transition); font-family: inherit; }
+    .btn-field-remove:hover { color: var(--danger); background: rgba(220,53,69,0.08); }
+    .add-field-section { margin-top: 8px; padding-top: 12px; border-top: 1px dashed var(--border); }
+    .add-field-form { display: none; margin-top: 10px; padding: 14px; background: var(--bg); border-radius: var(--radius); border: 1px solid var(--border); }
+    .add-field-form .form-row { margin-bottom: 0; }
     .sim-table { width:100%; border-collapse:collapse; font-size:12.5px; }
     .sim-table thead tr { background:var(--bg-2); }
     .sim-table th { padding:7px 10px; font-weight:600; color:var(--text-muted); white-space:nowrap; }
@@ -218,7 +219,9 @@
   if (session) document.getElementById('userName').textContent = session.name;
 
   let editingId = null;
-  let tagInputsState = {};  // { fieldName: [values] }
+  let tagInputsState = {};    // { fieldKey: [values] }
+  let activeFields   = [];    // ordered list of field keys currently shown
+  let customFieldLabels = {}; // { fieldKey: 'Label' } for user-added fields
 
   const PRICING_TYPE_INFO = {
     'flyer':         '📐 Preço Base = preço para 100 un., formato A6, papel 90g, impressão simples. Todos os outros cenários escalam proporcionalmente (mais quantidade = melhor preço/un.; tamanhos maiores e papel mais pesado aumentam o valor).',
@@ -401,6 +404,10 @@
     } else {
       infoEl.style.display = 'none';
     }
+    // Reset to default fields for this type (fresh start)
+    activeFields = [...(OPTIONS_BY_TYPE[type] || [])];
+    customFieldLabels = {};
+    tagInputsState = {};
     buildOptionsEditor(type);
     updateSimulator();
   }
@@ -471,44 +478,52 @@
 
   function buildOptionsEditor(type) {
     const builder = document.getElementById('optionsBuilder');
-    if (!type || !OPTIONS_BY_TYPE[type]) {
-      builder.innerHTML = '<p style="color:var(--text-muted);font-size:14px;">Selecione primeiro o Tipo de Cálculo de Preço.</p>';
+    if (!type) {
+      builder.innerHTML = '<p style="color:var(--text-muted);font-size:14px;">Selecione primeiro o Tipo de Cálculo de Preço para configurar as opções.</p>';
       return;
     }
 
-    const fields = OPTIONS_BY_TYPE[type];
-    builder.innerHTML = fields.map(field => {
-      const current = tagInputsState[field] || (editingId ? [] : [...(DEFAULT_OPTIONS[field] || [])]);
-      tagInputsState[field] = current;
-      return buildTagInput(field, OPTIONS_LABELS[field] || field, current);
+    // Build each active field
+    const fieldsHtml = activeFields.map(field => {
+      const label = OPTIONS_LABELS[field] || customFieldLabels[field] || field;
+      if (!tagInputsState[field]) {
+        tagInputsState[field] = editingId ? [] : [...(DEFAULT_OPTIONS[field] || [])];
+      }
+      return buildTagInput(field, label, tagInputsState[field]);
     }).join('');
 
-    // Attach events
-    fields.forEach(field => {
-      const input = document.getElementById(`tag_input_${field}`);
-      if (input) {
-        input.addEventListener('keydown', e => {
-          if ((e.key === 'Enter' || e.key === ',') && input.value.trim()) {
-            e.preventDefault();
-            addTag(field, input.value.trim());
-            input.value = '';
-          } else if (e.key === 'Backspace' && !input.value && tagInputsState[field]?.length > 0) {
-            removeTag(field, tagInputsState[field].length - 1);
-          }
-        });
-        // Click on wrapper focuses input
-        document.getElementById(`tag_wrap_${field}`).addEventListener('click', () => input.focus());
-      }
-    });
+    builder.innerHTML = fieldsHtml + `
+      <div class="add-field-section" id="addFieldSection">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="showAddFieldForm()" style="font-size:13px;gap:6px;">
+          ＋ Adicionar Campo de Opções
+        </button>
+        <div class="add-field-form" id="addFieldForm">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Crie um campo personalizado (ex: Milímetros, Espessura, Cor, Metros, Acabamento especial…)</p>
+          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:180px;margin-bottom:0;">
+              <label style="font-size:12px;margin-bottom:4px;">Nome do Campo *</label>
+              <input type="text" id="newFieldLabel" placeholder="Ex: Metros, mm, Acabamento..." style="width:100%"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomField();}" />
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="addCustomField()">Adicionar</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="hideAddFieldForm()">Cancelar</button>
+          </div>
+        </div>
+      </div>`;
+
+    activeFields.forEach(field => attachTagInputEvents(field));
   }
 
   function buildTagInput(field, label, values) {
     const tagsHtml = values.map((v, i) =>
-      `<span class="tag">${v}<span class="tag-remove" onclick="removeTag('${field}', ${i})">×</span></span>`
+      `<span class="tag">${escHtmlField(v)}<span class="tag-remove" onclick="removeTag('${field}', ${i})">×</span></span>`
     ).join('');
     return `
-      <div class="form-group">
-        <label>${label}</label>
+      <div class="form-group" id="field_group_${field}">
+        <div class="field-group-header">
+          <label>${label}</label>
+          <button type="button" class="btn-field-remove" onclick="removeField('${field}')" title="Remover este campo">✕ Remover</button>
+        </div>
         <div class="tag-input-wrap" id="tag_wrap_${field}">
           ${tagsHtml}
           <input class="tag-input" id="tag_input_${field}" placeholder="Escrever e Enter..." />
@@ -517,25 +532,45 @@
       </div>`;
   }
 
+  function escHtmlField(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function attachTagInputEvents(field) {
+    const input = document.getElementById(`tag_input_${field}`);
+    const wrap  = document.getElementById(`tag_wrap_${field}`);
+    if (!input) return;
+    input.addEventListener('keydown', e => {
+      if ((e.key === 'Enter' || e.key === ',') && input.value.trim()) {
+        e.preventDefault();
+        addTag(field, input.value.trim());
+        input.value = '';
+      } else if (e.key === 'Backspace' && !input.value && tagInputsState[field]?.length > 0) {
+        removeTag(field, tagInputsState[field].length - 1);
+      }
+    });
+    if (wrap) wrap.addEventListener('click', () => input.focus());
+  }
+
   function addTag(field, value) {
     if (!tagInputsState[field]) tagInputsState[field] = [];
     if (!tagInputsState[field].includes(value)) {
       tagInputsState[field].push(value);
-      rebuildTagInput(field);
+      rebuildTagWrap(field);
     }
   }
 
   function removeTag(field, index) {
     tagInputsState[field].splice(index, 1);
-    rebuildTagInput(field);
+    rebuildTagWrap(field);
   }
 
-  function rebuildTagInput(field) {
+  function rebuildTagWrap(field) {
     const wrap = document.getElementById(`tag_wrap_${field}`);
     if (!wrap) return;
     const values = tagInputsState[field] || [];
     const tagsHtml = values.map((v, i) =>
-      `<span class="tag">${v}<span class="tag-remove" onclick="removeTag('${field}', ${i})">×</span></span>`
+      `<span class="tag">${escHtmlField(v)}<span class="tag-remove" onclick="removeTag('${field}', ${i})">×</span></span>`
     ).join('');
     const inputEl = document.createElement('input');
     inputEl.className = 'tag-input';
@@ -543,25 +578,62 @@
     inputEl.placeholder = 'Escrever e Enter...';
     wrap.innerHTML = tagsHtml;
     wrap.appendChild(inputEl);
-    inputEl.addEventListener('keydown', e => {
-      if ((e.key === 'Enter' || e.key === ',') && inputEl.value.trim()) {
-        e.preventDefault();
-        addTag(field, inputEl.value.trim());
-        inputEl.value = '';
-      } else if (e.key === 'Backspace' && !inputEl.value && tagInputsState[field]?.length > 0) {
-        removeTag(field, tagInputsState[field].length - 1);
-      }
-    });
+    attachTagInputEvents(field);
     inputEl.focus();
   }
 
+  function removeField(field) {
+    activeFields = activeFields.filter(f => f !== field);
+    const group = document.getElementById(`field_group_${field}`);
+    if (group) group.remove();
+  }
+
+  function showAddFieldForm() {
+    document.getElementById('addFieldForm').style.display = 'block';
+    document.getElementById('newFieldLabel').focus();
+  }
+
+  function hideAddFieldForm() {
+    document.getElementById('addFieldForm').style.display = 'none';
+    document.getElementById('newFieldLabel').value = '';
+  }
+
+  function addCustomField() {
+    const labelInput = document.getElementById('newFieldLabel');
+    const label = labelInput.value.trim();
+    if (!label) { labelInput.focus(); return; }
+
+    // Generate a unique key from the label
+    const baseKey = label.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '');
+    const key = (baseKey || 'campo') + '_' + Date.now();
+
+    customFieldLabels[key] = label;
+    tagInputsState[key] = [];
+    activeFields.push(key);
+
+    // Insert before the add-field section
+    const addSection = document.getElementById('addFieldSection');
+    addSection.insertAdjacentHTML('beforebegin', buildTagInput(key, label, []));
+    attachTagInputEvents(key);
+    hideAddFieldForm();
+
+    // Auto-focus the new field
+    setTimeout(() => {
+      const input = document.getElementById(`tag_input_${key}`);
+      if (input) input.focus();
+    }, 50);
+  }
+
   function collectOptions(type) {
-    const fields = OPTIONS_BY_TYPE[type] || [];
     const options = {};
-    fields.forEach(field => {
+    activeFields.forEach(field => {
       const vals = tagInputsState[field] || [];
-      // Convert numeric fields
-      if (['quantities', 'widths', 'heights'].includes(field)) {
+      // Convert to numbers if all values are numeric (quantities, widths, heights, or custom numeric fields)
+      const allNumeric = vals.length > 0 && vals.every(v => !isNaN(v) && v.trim() !== '');
+      if (['quantities', 'widths', 'heights'].includes(field) || allNumeric) {
         options[field] = vals.map(v => isNaN(v) ? v : Number(v));
       } else {
         options[field] = vals;
@@ -593,7 +665,13 @@
     const image = imageVal || `https://placehold.co/600x400/FF4500/white?text=${encodeURIComponent(name)}`;
     const options = collectOptions(pricingType);
 
-    const data = { name, category, subcategory, description, pricingType, startingPrice, priceUnit, image, active, featured, options };
+    // Save custom field labels so they can be restored when editing
+    const optionLabels = {};
+    activeFields.forEach(field => {
+      if (customFieldLabels[field]) optionLabels[field] = customFieldLabels[field];
+    });
+
+    const data = { name, category, subcategory, description, pricingType, startingPrice, priceUnit, image, active, featured, options, optionLabels };
 
     const saveBtn = document.getElementById('saveBtn');
     const status = document.getElementById('saveStatus');
@@ -642,19 +720,32 @@
     document.getElementById('featured').checked = p.featured;
 
     previewImage();
-    onPricingTypeChange();
 
-    // Load existing options into tagInputsState
-    if (p.options && OPTIONS_BY_TYPE[p.pricingType]) {
-      const fields = OPTIONS_BY_TYPE[p.pricingType];
-      fields.forEach(field => {
-        if (p.options[field]) {
-          tagInputsState[field] = p.options[field].map(String);
-        }
-      });
-      buildOptionsEditor(p.pricingType);
+    // Show pricing type info (without triggering a full reset via onPricingTypeChange)
+    const infoEl = document.getElementById('pricingTypeInfo');
+    if (p.pricingType && PRICING_TYPE_INFO[p.pricingType]) {
+      infoEl.textContent = PRICING_TYPE_INFO[p.pricingType];
+      infoEl.style.display = 'block';
     }
 
+    // Restore saved option state
+    customFieldLabels = p.optionLabels ? { ...p.optionLabels } : {};
+    if (p.options) {
+      // Use the saved option keys (preserving order / custom fields)
+      const savedFields = Object.keys(p.options).filter(k => Array.isArray(p.options[k]));
+      activeFields = savedFields.length ? savedFields : [...(OPTIONS_BY_TYPE[p.pricingType] || [])];
+      activeFields.forEach(field => {
+        if (p.options[field] && Array.isArray(p.options[field])) {
+          tagInputsState[field] = p.options[field].map(String);
+        } else {
+          tagInputsState[field] = [];
+        }
+      });
+    } else {
+      activeFields = [...(OPTIONS_BY_TYPE[p.pricingType] || [])];
+    }
+
+    buildOptionsEditor(p.pricingType);
     updateSimulator();
   }
 
