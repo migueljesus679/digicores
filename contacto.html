@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Contacto - DigiCores</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/aos@2.3.4/dist/aos.css">
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -27,17 +31,24 @@
   </div>
 </header>
 
-<div style="padding:72px 0 80px;">
+<!-- Mini hero -->
+<div class="products-hero">
   <div class="container">
-    <div class="section-title">
-      <h2>Entre em Contacto</h2>
-      <p>Tem alguma dúvida ou quer pedir um orçamento personalizado? Fale connosco!</p>
+    <div data-aos="fade-up">
+      <div class="hero-badge" style="margin-bottom:16px;display:inline-flex;">📬 Estamos aqui para ajudar</div>
+      <h1>Entre em Contacto</h1>
+      <p>Tem alguma dúvida ou quer pedir um orçamento personalizado?</p>
     </div>
+  </div>
+</div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;max-width:900px;margin:0 auto;">
+<section class="contact-section">
+  <div class="container">
+    <div class="contact-grid">
 
-      <div>
-        <h3 style="margin-bottom:20px;">📬 Envie-nos uma mensagem</h3>
+      <!-- Formulário -->
+      <div class="contact-form-card" data-aos="fade-right" data-aos-duration="800">
+        <h3>Envie-nos uma mensagem</h3>
         <form id="contactForm" onsubmit="submitContact(event)">
           <div class="form-group">
             <label>Nome *</label>
@@ -62,62 +73,64 @@
           </div>
           <div class="form-group">
             <label>Mensagem *</label>
-            <textarea id="cf_message" placeholder="Descreva o seu projeto ou dúvida..." required style="min-height:120px;width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+            <textarea id="cf_message" placeholder="Descreva o seu projeto ou dúvida..." required></textarea>
           </div>
-          <button type="submit" id="submitBtn" class="btn btn-primary btn-block">Enviar Mensagem</button>
+          <button type="submit" id="submitBtn" class="btn btn-primary btn-block btn-lg">Enviar Mensagem</button>
         </form>
-        <div id="successMsg" style="display:none;background:#d4edda;color:#155724;padding:14px;border-radius:var(--radius);margin-top:12px;font-weight:600;">
-          ✅ Mensagem enviada! Entraremos em contacto em breve.
+        <div id="successMsg" class="contact-success">
+          ✅ Mensagem enviada com sucesso! Entraremos em contacto em breve.
         </div>
-        <div id="errorMsg" style="display:none;background:#f8d7da;color:#721c24;padding:14px;border-radius:var(--radius);margin-top:12px;font-weight:600;">
+        <div id="errorMsg" class="contact-error">
           ❌ Erro ao enviar. Tente novamente ou contacte-nos diretamente por email.
         </div>
       </div>
 
-      <div>
-        <h3 style="margin-bottom:20px;">📍 Informações de Contacto</h3>
-        <div style="display:flex;flex-direction:column;gap:20px;">
-          <div style="display:flex;gap:14px;align-items:flex-start;">
-            <div style="font-size:28px;">📧</div>
+      <!-- Informações -->
+      <div class="contact-info-card" data-aos="fade-left" data-aos-delay="100" data-aos-duration="800">
+        <h3>Informações de Contacto</h3>
+        <div class="contact-info-items">
+          <div class="contact-info-item">
+            <div class="contact-info-icon">📧</div>
             <div>
-              <div style="font-weight:700;margin-bottom:4px;">Email</div>
-              <div style="color:var(--text-muted);">coontasegura@gmail.com</div>
+              <div class="contact-info-label">Email</div>
+              <a href="mailto:geral@digicores.pt" class="contact-info-value">geral@digicores.pt</a>
             </div>
           </div>
-          <div style="display:flex;gap:14px;align-items:flex-start;">
-            <div style="font-size:28px;">📞</div>
+          <div class="contact-info-item">
+            <div class="contact-info-icon">📞</div>
             <div>
-              <div style="font-weight:700;margin-bottom:4px;">Telefone</div>
-              <div style="color:var(--text-muted);">+351 210 000 000</div>
-              <div style="color:var(--text-muted);font-size:13px;">Seg-Sex: 9h00 - 18h00</div>
+              <div class="contact-info-label">Telefone</div>
+              <div class="contact-info-value">+351 210 000 000</div>
+              <div class="contact-info-value" style="font-size:13px;">Seg-Sex: 9h00 – 18h00</div>
             </div>
           </div>
-          <div style="display:flex;gap:14px;align-items:flex-start;">
-            <div style="font-size:28px;">📍</div>
+          <div class="contact-info-item">
+            <div class="contact-info-icon">📍</div>
             <div>
-              <div style="font-weight:700;margin-bottom:4px;">Morada</div>
-              <div style="color:var(--text-muted);">Rua da Impressão, 123<br>1000-001 Lisboa, Portugal</div>
+              <div class="contact-info-label">Morada</div>
+              <div class="contact-info-value">Rua da Impressão, 123<br>1000-001 Lisboa, Portugal</div>
             </div>
           </div>
-          <div style="display:flex;gap:14px;align-items:flex-start;">
-            <div style="font-size:28px;">💬</div>
+          <div class="contact-info-item">
+            <div class="contact-info-icon">💬</div>
             <div>
-              <div style="font-weight:700;margin-bottom:4px;">WhatsApp</div>
-              <div style="color:var(--text-muted);">+351 910 000 000</div>
-              <div style="color:var(--text-muted);font-size:13px;">Resposta rápida</div>
+              <div class="contact-info-label">WhatsApp</div>
+              <div class="contact-info-value">+351 910 000 000</div>
+              <div class="contact-info-value" style="font-size:13px;">Resposta rápida</div>
             </div>
           </div>
         </div>
 
-        <div style="background:var(--bg);border-radius:var(--radius-lg);padding:24px;margin-top:28px;">
-          <h4 style="margin-bottom:12px;">⚡ Precisa de resposta rápida?</h4>
-          <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px;">Para encomendas urgentes ou dúvidas rápidas, contacte-nos diretamente pelo WhatsApp.</p>
+        <div class="contact-cta-box">
+          <h4>⚡ Precisa de resposta rápida?</h4>
+          <p>Para encomendas urgentes ou dúvidas rápidas, contacte-nos diretamente pelo WhatsApp.</p>
           <a href="https://wa.me/351910000000" class="btn btn-success btn-block">📲 Contactar no WhatsApp</a>
         </div>
       </div>
+
     </div>
   </div>
-</div>
+</section>
 
 <footer class="footer">
   <div class="container">
@@ -153,7 +166,6 @@
     let emailError;
 
     try {
-      // Enviar email via Web3Forms (client-side, sem restrições de IP)
       const w3res = await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -180,7 +192,6 @@
       emailError = err.message;
     }
 
-    // Guardar registo no admin (independentemente do resultado do email)
     await fetch('/api/contact', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -188,8 +199,9 @@
     }).catch(() => {});
 
     if (emailStatus === 'failed') {
-      document.getElementById('errorMsg').style.display = 'block';
-      document.getElementById('errorMsg').textContent = '❌ ' + (emailError || 'Erro ao enviar. Tente novamente.');
+      const errEl = document.getElementById('errorMsg');
+      errEl.style.display = 'block';
+      errEl.textContent = '❌ ' + (emailError || 'Erro ao enviar. Tente novamente.');
       btn.disabled = false;
       btn.textContent = 'Enviar Mensagem';
     } else {
@@ -197,6 +209,12 @@
       document.getElementById('successMsg').style.display = 'block';
     }
   }
+</script>
+
+<!-- AOS -->
+<script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+<script>
+  AOS.init({ once: true, duration: 700, easing: 'ease-out-cubic', offset: 60 });
 </script>
 </body>
 </html>

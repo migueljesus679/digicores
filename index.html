@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DigiCores - Impressão e Comunicação Visual</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/aos@2.3.4/dist/aos.css">
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -67,7 +71,7 @@
 <!-- ── FEATURED PRODUCTS ── -->
 <section class="section">
   <div class="container">
-    <div class="section-title">
+    <div class="section-title" data-aos="fade-up">
       <h2>Os Mais Vendidos</h2>
       <p>Os produtos favoritos dos nossos clientes, com a melhor relação qualidade-preço.</p>
     </div>
@@ -81,26 +85,26 @@
 <!-- ── FEATURES ── -->
 <section class="section-sm" style="background:var(--bg)">
   <div class="container">
-    <div class="section-title">
+    <div class="section-title" data-aos="fade-up">
       <h2>Porquê escolher a DigiCores?</h2>
     </div>
     <div class="features-grid">
-      <div class="feature-card">
+      <div class="feature-card" data-aos="fade-up" data-aos-delay="0">
         <div class="feature-icon">🎨</div>
         <h4>Qualidade Garantida</h4>
         <p>Impressão digital e offset de alta resolução em materiais premium selecionados.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
         <div class="feature-icon">⚡</div>
         <h4>Entrega Rápida</h4>
         <p>Produção expressa em 24-48 horas. Entrega ao domicílio em todo o território nacional.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
         <div class="feature-icon">💰</div>
         <h4>Melhores Preços</h4>
         <p>Preços competitivos com descontos crescentes para maiores quantidades.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card" data-aos="fade-up" data-aos-delay="300">
         <div class="feature-icon">🛡️</div>
         <h4>Suporte Dedicado</h4>
         <p>Equipa técnica disponível para ajudar desde a preparação do ficheiro até à entrega.</p>
@@ -112,22 +116,22 @@
 <!-- ── CATEGORIES GRID ── -->
 <section class="section">
   <div class="container">
-    <div class="section-title">
+    <div class="section-title" data-aos="fade-up">
       <h2>As Nossas Categorias</h2>
       <p>Encontre o produto de comunicação visual certo para as suas necessidades.</p>
     </div>
-    <div id="categoriesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;"></div>
+    <div id="categoriesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px;"></div>
   </div>
 </section>
 
 <!-- ── TESTIMONIALS ── -->
 <section class="section-sm" style="background:var(--bg)">
   <div class="container">
-    <div class="section-title">
+    <div class="section-title" data-aos="fade-up">
       <h2>O que dizem os nossos clientes</h2>
     </div>
     <div class="testimonials-grid">
-      <div class="testimonial-card">
+      <div class="testimonial-card" data-aos="fade-up" data-aos-delay="0">
         <div class="stars">★★★★★</div>
         <p class="testimonial-text">"Excelente qualidade de impressão! Os flyers ficaram perfeitos e a entrega foi super rápida. Já são os meus fornecedores de confiança."</p>
         <div class="testimonial-author">
@@ -135,7 +139,7 @@
           <div><div class="author-name">João Ferreira</div><div class="author-company">Restaurante O Bacalhau</div></div>
         </div>
       </div>
-      <div class="testimonial-card">
+      <div class="testimonial-card" data-aos="fade-up" data-aos-delay="120">
         <div class="stars">★★★★★</div>
         <p class="testimonial-text">"Os cartões de visita soft touch são lindíssimos. A qualidade superou todas as expectativas. Recomendo vivamente a todos."</p>
         <div class="testimonial-author">
@@ -143,7 +147,7 @@
           <div><div class="author-name">Maria Silva</div><div class="author-company">Studio Design MS</div></div>
         </div>
       </div>
-      <div class="testimonial-card">
+      <div class="testimonial-card" data-aos="fade-up" data-aos-delay="240">
         <div class="stars">★★★★</div>
         <p class="testimonial-text">"Encomendei roll-ups para a nossa feira e chegaram em perfeito estado, rápido e com um acabamento impecável. Muito satisfeito!"</p>
         <div class="testimonial-author">
@@ -156,7 +160,7 @@
 </section>
 
 <!-- ── CTA ── -->
-<section class="cta-banner">
+<section class="cta-banner" data-aos="fade-up" data-aos-offset="0">
   <div class="container">
     <h2>Pronto para começar?</h2>
     <p>Calcule o preço do seu projeto agora mesmo, sem compromisso.</p>
@@ -247,7 +251,8 @@
   function renderFeatured() {
     const grid = document.getElementById('featuredGrid');
     const products = DigiDB.getProducts().filter(p => p.featured && p.active);
-    grid.innerHTML = products.map(p => productCard(p)).join('');
+    grid.innerHTML = products.map((p, i) => productCard(p, i)).join('');
+    if (typeof AOS !== 'undefined') AOS.refresh();
   }
 
   // Hero visual
@@ -272,24 +277,23 @@
     const grid = document.getElementById('categoriesGrid');
     const cats = DigiDB.getCategories();
     const allProducts = DigiDB.getProducts();
-    grid.innerHTML = cats.map(c => {
+    grid.innerHTML = cats.map((c, i) => {
       const count = allProducts.filter(p => p.category === c.id && p.active).length;
       return `
-        <a href="produtos.html?cat=${c.id}" style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px 20px;text-align:center;transition:var(--transition);display:block;"
-           onmouseover="this.style.boxShadow='var(--shadow-lg)';this.style.transform='translateY(-4px)';this.style.borderColor='transparent'"
-           onmouseout="this.style.boxShadow='';this.style.transform='';this.style.borderColor='var(--border)'">
-          <div style="font-size:40px;margin-bottom:12px;">${c.icon}</div>
-          <h4 style="margin-bottom:6px;">${c.name}</h4>
-          <p style="font-size:13px;color:var(--text-muted);">${count} produto${count !== 1 ? 's' : ''}</p>
+        <a href="produtos.html?cat=${c.id}" class="category-card" data-aos="zoom-in" data-aos-delay="${i * 60}">
+          <span class="category-card-icon">${c.icon}</span>
+          <h4>${c.name}</h4>
+          <p>${count} produto${count !== 1 ? 's' : ''}</p>
         </a>`;
     }).join('');
+    if (typeof AOS !== 'undefined') AOS.refresh();
   }
 
-  function productCard(p) {
+  function productCard(p, index = 0) {
     const cats = DigiDB.getCategories();
     const cat = cats.find(c => c.id === p.category);
     return `
-      <div class="product-card">
+      <div class="product-card" data-aos="fade-up" data-aos-delay="${index * 80}">
         <a href="produto.html?id=${p.id}" class="product-img">
           <img src="${p.image}" alt="${p.name}" loading="lazy" onerror="this.src='https://placehold.co/600x400/f0f2f5/999?text=${encodeURIComponent(p.name)}'">
           ${p.featured ? '<span class="product-badge">Destaque</span>' : ''}
@@ -317,6 +321,27 @@
   renderFeatured();
   renderHeroVisual();
   renderCategoriesGrid();
+</script>
+
+<!-- AOS -->
+<script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+<!-- GSAP (hero animation only) -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script>
+  // AOS init
+  AOS.init({ once: true, duration: 700, easing: 'ease-out-cubic', offset: 60 });
+
+  // GSAP hero entrance animation
+  function initHeroGSAP() {
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    tl.from('.hero-badge', { opacity: 0, y: -20, duration: 0.5 })
+      .from('.hero h1', { opacity: 0, y: 30, duration: 0.7 }, '-=0.3')
+      .from('.hero p', { opacity: 0, y: 20, duration: 0.6 }, '-=0.4')
+      .from('.hero-actions', { opacity: 0, y: 20, duration: 0.5 }, '-=0.3')
+      .from('.hero-stat', { opacity: 0, y: 20, stagger: 0.12, duration: 0.5 }, '-=0.2')
+      .from('.hero-card', { opacity: 0, x: 60, y: 20, stagger: 0.12, duration: 0.7, ease: 'back.out(1.3)' }, '-=0.6');
+  }
+  if (typeof gsap !== 'undefined') initHeroGSAP();
 </script>
 </body>
 </html>

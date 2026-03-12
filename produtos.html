@@ -4,7 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Produtos - DigiCores</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/aos@2.3.4/dist/aos.css">
   <link rel="stylesheet" href="css/style.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </head>
 <body>
 
@@ -27,29 +32,45 @@
   </div>
 </header>
 
-<div class="products-page">
+<!-- Mini Hero -->
+<div class="products-hero">
   <div class="container">
-    <div class="page-header">
+    <div data-aos="fade-up">
+      <div class="hero-badge" style="margin-bottom:16px;display:inline-flex;">🖨️ Catálogo Completo</div>
       <h1>Todos os Produtos</h1>
       <p>Impressão e comunicação visual de alta qualidade</p>
     </div>
+  </div>
+</div>
 
-    <div class="filters-bar">
-      <input type="search" class="search-input" id="searchInput" placeholder="Pesquisar produtos..." />
-      <div class="select-wrap" style="position:relative;">
-        <select class="filter-select" id="categoryFilter">
-          <option value="">Todas as Categorias</option>
-        </select>
+<div class="products-page">
+  <div class="container">
+
+    <!-- Filters + View Toggle -->
+    <div x-data="{ viewMode: 'grid' }">
+      <div class="filters-bar" style="margin-top:32px;">
+        <input type="search" class="search-input" id="searchInput" placeholder="Pesquisar produtos..." />
+        <div class="select-wrap" style="position:relative;">
+          <select class="filter-select" id="categoryFilter">
+            <option value="">Todas as Categorias</option>
+          </select>
+        </div>
+        <div class="select-wrap" style="position:relative;">
+          <select class="filter-select" id="sortFilter">
+            <option value="">Ordenar por</option>
+            <option value="price-asc">Preço: Menor → Maior</option>
+            <option value="price-desc">Preço: Maior → Menor</option>
+            <option value="name">Nome A-Z</option>
+          </select>
+        </div>
+        <span class="products-count" id="productsCount"></span>
+        <div style="display:flex;gap:4px;margin-left:auto;">
+          <button class="view-btn" :class="viewMode==='grid' ? 'active' : ''"
+            @click="viewMode='grid'; document.getElementById('productsGrid').className='products-grid'">⊞</button>
+          <button class="view-btn" :class="viewMode==='list' ? 'active' : ''"
+            @click="viewMode='list'; document.getElementById('productsGrid').className='products-list'">☰</button>
+        </div>
       </div>
-      <div class="select-wrap" style="position:relative;">
-        <select class="filter-select" id="sortFilter">
-          <option value="">Ordenar por</option>
-          <option value="price-asc">Preço: Menor → Maior</option>
-          <option value="price-desc">Preço: Maior → Menor</option>
-          <option value="name">Nome A-Z</option>
-        </select>
-      </div>
-      <span class="products-count" id="productsCount"></span>
     </div>
 
     <!-- Category pills -->
@@ -103,7 +124,6 @@
     pills.innerHTML = `<button class="cat-pill ${activeCategory === '' ? 'active' : ''}" onclick="setCategory('')">Todos</button>` +
       cats.map(c => `<button class="cat-pill ${activeCategory === c.id ? 'active' : ''}" onclick="setCategory('${c.id}')">${c.icon} ${c.name}</button>`).join('');
 
-    // Also populate select
     const sel = document.getElementById('categoryFilter');
     sel.innerHTML = '<option value="">Todas as Categorias</option>' +
       cats.map(c => `<option value="${c.id}" ${activeCategory === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
@@ -113,7 +133,6 @@
     activeCategory = catId;
     renderCatPills();
     renderProducts();
-    // Update URL
     const url = new URL(window.location);
     if (catId) url.searchParams.set('cat', catId);
     else url.searchParams.delete('cat');
@@ -143,13 +162,14 @@
       empty.classList.remove('d-none');
     } else {
       empty.classList.add('d-none');
-      grid.innerHTML = products.map(p => productCard(p)).join('');
+      grid.innerHTML = products.map((p, i) => productCard(p, i)).join('');
+      if (typeof AOS !== 'undefined') AOS.refresh();
     }
   }
 
-  function productCard(p) {
+  function productCard(p, index = 0) {
     return `
-      <div class="product-card">
+      <div class="product-card" data-aos="fade-up" data-aos-delay="${Math.min(index * 60, 360)}">
         <a href="produto.html?id=${p.id}" class="product-img">
           <img src="${p.image}" alt="${p.name}" loading="lazy" onerror="this.src='https://placehold.co/600x400/f0f2f5/999?text=${encodeURIComponent(p.name)}'">
           ${p.featured ? '<span class="product-badge">Destaque</span>' : ''}
@@ -182,7 +202,6 @@
   allProducts = DigiDB.getProducts();
   updateCartCount();
 
-  // URL params
   const params = new URLSearchParams(window.location.search);
   if (params.get('cat')) activeCategory = params.get('cat');
 
@@ -201,6 +220,12 @@
     sortBy = e.target.value;
     renderProducts();
   });
+</script>
+
+<!-- AOS -->
+<script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+<script>
+  AOS.init({ once: true, duration: 700, easing: 'ease-out-cubic', offset: 60 });
 </script>
 </body>
 </html>
