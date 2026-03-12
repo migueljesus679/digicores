@@ -471,8 +471,52 @@ const DigiDB = (() => {
     }
   };
 
+  // ── Custom Price Engine (used when product.optionPrices is defined) ──────
+  function calculateCustomPrice(product, selections) {
+    const prices = product.optionPrices || {};
+    const modes  = product.fieldPriceModes || {};
+    const opts   = product.options || {};
+
+    // Step 1: find the base price from the 'absolute' field (usually quantities)
+    let basePrice = product.startingPrice;
+    for (const [field, mode] of Object.entries(modes)) {
+      if (mode !== 'absolute') continue;
+      if (!prices[field]) continue;
+      // Map field name to selection key
+      const selKey = field === 'quantities' ? 'quantity'
+                   : field === 'widths'     ? 'width'
+                   : field === 'heights'    ? 'height'
+                   : field;
+      const selVal = String(selections[selKey] !== undefined ? selections[selKey]
+                   : selections[field] !== undefined ? selections[field]
+                   : (opts[field] ? opts[field][0] : ''));
+      if (prices[field][selVal] !== undefined) {
+        basePrice = prices[field][selVal];
+        break; // only one absolute field drives the base
+      }
+    }
+
+    // Step 2: apply multipliers from all 'multiplier' fields
+    let total = basePrice;
+    for (const [field, mode] of Object.entries(modes)) {
+      if (mode !== 'multiplier') continue;
+      if (!prices[field]) continue;
+      const selKey = field;
+      const selVal = String(selections[selKey] !== undefined ? selections[selKey]
+                   : (opts[field] ? opts[field][0] : ''));
+      const mult = prices[field][selVal];
+      if (mult !== undefined && mult > 0) total *= mult;
+    }
+
+    return Math.round(total * 100) / 100;
+  }
+
   // ── Calculate Price ─────────────────────────
   function calculatePrice(product, selections) {
+    // Use custom pricing engine if optionPrices is defined
+    if (product.optionPrices && Object.keys(product.optionPrices).length > 0) {
+      return calculateCustomPrice(product, selections);
+    }
     const p = PRICING;
     let price = 0;
     const type = product.pricingType;

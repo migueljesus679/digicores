@@ -20,6 +20,14 @@
     .add-field-section { margin-top: 8px; padding-top: 12px; border-top: 1px dashed var(--border); }
     .add-field-form { display: none; margin-top: 10px; padding: 14px; background: var(--bg); border-radius: var(--radius); border: 1px solid var(--border); }
     .add-field-form .form-row { margin-bottom: 0; }
+    .price-mode-btn { font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1.5px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; transition: var(--transition); font-family: inherit; white-space: nowrap; }
+    .price-mode-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .price-mode-btn.mode-multiplier { border-color: #7c3aed; color: #7c3aed; background: rgba(124,58,237,0.06); }
+    .price-mode-btn.mode-absolute  { border-color: var(--success); color: var(--success); background: rgba(40,167,69,0.06); }
+    .tag-price-badge { display: inline-flex; align-items: center; background: rgba(255,69,0,0.1); border: 1px solid rgba(255,69,0,0.2); color: var(--primary); font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; cursor: pointer; margin-left: 2px; transition: background 0.15s; line-height: 1.4; }
+    .tag-price-badge:hover { background: rgba(255,69,0,0.22); }
+    .tag-price-badge.no-price { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.15); color: var(--text-muted); }
+    .tag-price-input { width: 58px; font-size: 11px; padding: 1px 4px; border: 1.5px solid var(--primary); border-radius: 3px; outline: none; font-family: inherit; }
     .sim-table { width:100%; border-collapse:collapse; font-size:12.5px; }
     .sim-table thead tr { background:var(--bg-2); }
     .sim-table th { padding:7px 10px; font-weight:600; color:var(--text-muted); white-space:nowrap; }
@@ -219,9 +227,15 @@
   if (session) document.getElementById('userName').textContent = session.name;
 
   let editingId = null;
-  let tagInputsState = {};    // { fieldKey: [values] }
-  let activeFields   = [];    // ordered list of field keys currently shown
-  let customFieldLabels = {}; // { fieldKey: 'Label' } for user-added fields
+  let tagInputsState    = {};  // { fieldKey: ['value1', 'value2', ...] }
+  let tagPricesState    = {};  // { fieldKey: { 'value': price } }
+  let fieldPriceModes   = {};  // { fieldKey: 'none' | 'multiplier' | 'absolute' }
+  let activeFields      = [];  // ordered list of field keys currently shown
+  let customFieldLabels = {};  // { fieldKey: 'Label' } for user-added fields
+
+  function getDefaultPriceMode(field) {
+    return ['quantities', 'widths', 'heights'].includes(field) ? 'absolute' : 'none';
+  }
 
   const PRICING_TYPE_INFO = {
     'flyer':         '📐 Preço Base = preço para 100 un., formato A6, papel 90g, impressão simples. Todos os outros cenários escalam proporcionalmente (mais quantidade = melhor preço/un.; tamanhos maiores e papel mais pesado aumentam o valor).',
@@ -408,6 +422,9 @@
     activeFields = [...(OPTIONS_BY_TYPE[type] || [])];
     customFieldLabels = {};
     tagInputsState = {};
+    tagPricesState = {};
+    fieldPriceModes = {};
+    activeFields.forEach(f => { fieldPriceModes[f] = getDefaultPriceMode(f); });
     buildOptionsEditor(type);
     updateSimulator();
   }
@@ -515,21 +532,107 @@
   }
 
   function buildTagInput(field, label, values) {
-    const tagsHtml = values.map((v, i) =>
-      `<span class="tag">${escHtmlField(v)}<span class="tag-remove" onclick="removeTag('${field}', ${i})">×</span></span>`
-    ).join('');
+    const mode = fieldPriceModes[field] || 'none';
+    const modeLabelMap = { none: '💰 Preços OFF', multiplier: '× Multiplicador', absolute: '€ Absoluto' };
+    const modeCls = mode === 'none' ? '' : mode === 'multiplier' ? 'mode-multiplier' : 'mode-absolute';
+    const placeholder = mode === 'none'
+      ? 'Escrever e Enter...'
+      : mode === 'absolute' ? 'valor:preço (ex: 100:18.50)' : 'valor:mult (ex: A5:1.6)';
+    const hint = mode === 'none'
+      ? 'Prima Enter ou vírgula para adicionar. Clique × para remover.'
+      : `Use <strong>valor:${mode === 'absolute' ? 'preço</strong> (ex: 100:18.50 ou A5:28)' : 'multiplicador</strong> (ex: A5:1.6 ou Mate:1)'}. Clique no badge laranja para editar o preço.`;
+    const tagsHtml = values.map((v, i) => buildSingleTag(field, v, i)).join('');
     return `
       <div class="form-group" id="field_group_${field}">
         <div class="field-group-header">
           <label>${label}</label>
-          <button type="button" class="btn-field-remove" onclick="removeField('${field}')" title="Remover este campo">✕ Remover</button>
+          <div style="display:flex;gap:5px;align-items:center;">
+            <button type="button" class="price-mode-btn ${modeCls}" onclick="cyclePriceMode('${field}')"
+              title="Clique para alternar: Sem Preços → Multiplicador → Preço Absoluto">${modeLabelMap[mode]}</button>
+            <button type="button" class="btn-field-remove" onclick="removeField('${field}')" title="Remover campo">✕ Remover</button>
+          </div>
         </div>
         <div class="tag-input-wrap" id="tag_wrap_${field}">
           ${tagsHtml}
-          <input class="tag-input" id="tag_input_${field}" placeholder="Escrever e Enter..." />
+          <input class="tag-input" id="tag_input_${field}" placeholder="${placeholder}" />
         </div>
-        <div class="hint">Prima Enter ou vírgula para adicionar. Clique × para remover.</div>
+        <div class="hint">${hint}</div>
       </div>`;
+  }
+
+  function buildSingleTag(field, value, index) {
+    const mode = fieldPriceModes[field] || 'none';
+    let priceBadge = '';
+    if (mode !== 'none') {
+      const price = (tagPricesState[field] || {})[value];
+      if (price !== undefined) {
+        const priceStr = mode === 'absolute' ? `€${Number(price).toFixed(2)}` : `×${Number(price).toFixed(2)}`;
+        priceBadge = `<span class="tag-price-badge" onclick="editTagPrice('${field}', ${index})" title="Clique para editar preço">${priceStr}</span>`;
+      } else {
+        priceBadge = `<span class="tag-price-badge no-price" onclick="editTagPrice('${field}', ${index})" title="Definir preço">+ preço</span>`;
+      }
+    }
+    return `<span class="tag">${escHtmlField(value)}${priceBadge}<span class="tag-remove" onclick="removeTag('${field}', ${index})">×</span></span>`;
+  }
+
+  function rebuildField(field) {
+    const group = document.getElementById(`field_group_${field}`);
+    if (!group) return;
+    const label = OPTIONS_LABELS[field] || customFieldLabels[field] || field;
+    const values = tagInputsState[field] || [];
+    group.outerHTML = buildTagInput(field, label, values);
+    attachTagInputEvents(field);
+  }
+
+  function cyclePriceMode(field) {
+    const cur = fieldPriceModes[field] || 'none';
+    fieldPriceModes[field] = cur === 'none' ? 'multiplier' : cur === 'multiplier' ? 'absolute' : 'none';
+    // Set default prices when enabling a mode
+    if (fieldPriceModes[field] !== 'none' && !(tagPricesState[field])) {
+      tagPricesState[field] = {};
+    }
+    rebuildField(field);
+  }
+
+  function editTagPrice(field, index) {
+    const value = (tagInputsState[field] || [])[index];
+    if (value === undefined) return;
+    const mode = fieldPriceModes[field] || 'none';
+    const currentPrice = (tagPricesState[field] || {})[value];
+
+    // Find the badge element by index
+    const wrap = document.getElementById(`tag_wrap_${field}`);
+    if (!wrap) return;
+    const tags = wrap.querySelectorAll('.tag');
+    if (!tags[index]) return;
+    const badge = tags[index].querySelector('.tag-price-badge');
+    if (!badge) return;
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.step = '0.01';
+    input.min = '0';
+    input.value = currentPrice !== undefined ? currentPrice : (mode === 'absolute' ? '' : '1');
+    input.className = 'tag-price-input';
+    input.placeholder = mode === 'absolute' ? '€' : '×';
+
+    badge.replaceWith(input);
+    input.focus();
+    input.select();
+
+    function savePrice() {
+      const newPrice = parseFloat(input.value);
+      if (!isNaN(newPrice) && newPrice >= 0) {
+        if (!tagPricesState[field]) tagPricesState[field] = {};
+        tagPricesState[field][value] = newPrice;
+      }
+      rebuildField(field);
+    }
+    input.addEventListener('blur', savePrice);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); savePrice(); }
+      if (e.key === 'Escape') rebuildField(field);
+    });
   }
 
   function escHtmlField(str) {
@@ -552,16 +655,43 @@
     if (wrap) wrap.addEventListener('click', () => input.focus());
   }
 
-  function addTag(field, value) {
-    if (!tagInputsState[field]) tagInputsState[field] = [];
-    if (!tagInputsState[field].includes(value)) {
-      tagInputsState[field].push(value);
-      rebuildTagWrap(field);
+  function addTag(field, rawValue) {
+    // Support "value:price" notation
+    const colonIdx = rawValue.lastIndexOf(':');
+    let value, price;
+    if (colonIdx > 0) {
+      value = rawValue.substring(0, colonIdx).trim();
+      price = parseFloat(rawValue.substring(colonIdx + 1).trim());
+    } else {
+      value = rawValue.trim();
+      price = undefined;
     }
+    if (!value) return;
+    if (!tagInputsState[field]) tagInputsState[field] = [];
+    if (tagInputsState[field].includes(value)) return;
+    tagInputsState[field].push(value);
+
+    // Set price if provided, or set default when mode is active
+    const mode = fieldPriceModes[field] || 'none';
+    if (!isNaN(price) && price !== undefined) {
+      if (!tagPricesState[field]) tagPricesState[field] = {};
+      tagPricesState[field][value] = price;
+    } else if (mode === 'multiplier') {
+      if (!tagPricesState[field]) tagPricesState[field] = {};
+      if (tagPricesState[field][value] === undefined) tagPricesState[field][value] = 1.0;
+    } else if (mode === 'absolute') {
+      if (!tagPricesState[field]) tagPricesState[field] = {};
+      // leave undefined so badge shows "+ preço" prompting the user to set it
+    }
+    rebuildTagWrap(field);
   }
 
   function removeTag(field, index) {
+    const removedValue = tagInputsState[field][index];
     tagInputsState[field].splice(index, 1);
+    if (tagPricesState[field] && removedValue !== undefined) {
+      delete tagPricesState[field][removedValue];
+    }
     rebuildTagWrap(field);
   }
 
@@ -569,13 +699,14 @@
     const wrap = document.getElementById(`tag_wrap_${field}`);
     if (!wrap) return;
     const values = tagInputsState[field] || [];
-    const tagsHtml = values.map((v, i) =>
-      `<span class="tag">${escHtmlField(v)}<span class="tag-remove" onclick="removeTag('${field}', ${i})">×</span></span>`
-    ).join('');
+    const tagsHtml = values.map((v, i) => buildSingleTag(field, v, i)).join('');
+    const mode = fieldPriceModes[field] || 'none';
+    const placeholder = mode === 'none' ? 'Escrever e Enter...'
+      : mode === 'absolute' ? 'valor:preço (ex: 100:18.50)' : 'valor:mult (ex: A5:1.6)';
     const inputEl = document.createElement('input');
     inputEl.className = 'tag-input';
     inputEl.id = `tag_input_${field}`;
-    inputEl.placeholder = 'Escrever e Enter...';
+    inputEl.placeholder = placeholder;
     wrap.innerHTML = tagsHtml;
     wrap.appendChild(inputEl);
     attachTagInputEvents(field);
@@ -627,6 +758,19 @@
     }, 50);
   }
 
+  function collectOptionPrices() {
+    const prices = {};
+    const modes = {};
+    activeFields.forEach(field => {
+      const mode = fieldPriceModes[field] || 'none';
+      if (mode !== 'none' && tagPricesState[field] && Object.keys(tagPricesState[field]).length > 0) {
+        prices[field] = { ...tagPricesState[field] };
+        modes[field] = mode;
+      }
+    });
+    return { optionPrices: prices, fieldPriceModes: modes };
+  }
+
   function collectOptions(type) {
     const options = {};
     activeFields.forEach(field => {
@@ -665,13 +809,16 @@
     const image = imageVal || `https://placehold.co/600x400/FF4500/white?text=${encodeURIComponent(name)}`;
     const options = collectOptions(pricingType);
 
-    // Save custom field labels so they can be restored when editing
+    // Save custom field labels
     const optionLabels = {};
     activeFields.forEach(field => {
       if (customFieldLabels[field]) optionLabels[field] = customFieldLabels[field];
     });
 
-    const data = { name, category, subcategory, description, pricingType, startingPrice, priceUnit, image, active, featured, options, optionLabels };
+    // Save custom pricing
+    const { optionPrices, fieldPriceModes: fieldPriceModesData } = collectOptionPrices();
+
+    const data = { name, category, subcategory, description, pricingType, startingPrice, priceUnit, image, active, featured, options, optionLabels, optionPrices, fieldPriceModes: fieldPriceModesData };
 
     const saveBtn = document.getElementById('saveBtn');
     const status = document.getElementById('saveStatus');
@@ -730,19 +877,27 @@
 
     // Restore saved option state
     customFieldLabels = p.optionLabels ? { ...p.optionLabels } : {};
+    tagPricesState = {};
+    fieldPriceModes = {};
     if (p.options) {
-      // Use the saved option keys (preserving order / custom fields)
       const savedFields = Object.keys(p.options).filter(k => Array.isArray(p.options[k]));
       activeFields = savedFields.length ? savedFields : [...(OPTIONS_BY_TYPE[p.pricingType] || [])];
       activeFields.forEach(field => {
-        if (p.options[field] && Array.isArray(p.options[field])) {
-          tagInputsState[field] = p.options[field].map(String);
-        } else {
-          tagInputsState[field] = [];
-        }
+        tagInputsState[field] = p.options[field] && Array.isArray(p.options[field])
+          ? p.options[field].map(String) : [];
+        // Restore price modes (saved or default)
+        fieldPriceModes[field] = (p.fieldPriceModes && p.fieldPriceModes[field])
+          || getDefaultPriceMode(field);
       });
+      // Restore price values
+      if (p.optionPrices) {
+        for (const [field, prices] of Object.entries(p.optionPrices)) {
+          tagPricesState[field] = { ...prices };
+        }
+      }
     } else {
       activeFields = [...(OPTIONS_BY_TYPE[p.pricingType] || [])];
+      activeFields.forEach(f => { fieldPriceModes[f] = getDefaultPriceMode(f); });
     }
 
     buildOptionsEditor(p.pricingType);

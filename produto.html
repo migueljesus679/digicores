@@ -102,8 +102,50 @@
       </div>`;
   }
 
+  // ── Generic calculator for products with custom optionPrices ──────────
+  const FIELD_LABELS_MAP = {
+    quantities: 'Quantidade', sizes: 'Tamanho', papers: 'Gramagem',
+    sides: 'Impressão', finishes: 'Acabamento', corners: 'Cantos',
+    folds: 'Dobra', windows: 'Janela', materials: 'Material',
+    shapes: 'Forma', models: 'Modelo', colors: 'Cor',
+    widths: 'Largura (m)', heights: 'Altura (m)', thicknesses: 'Espessura',
+    accessories: 'Acessórios', printTypes: 'Área de Impressão',
+    printTechniques: 'Técnica de Impressão', fabrics: 'Tecido',
+    printAreas: 'Área de Impressão', capacity: 'Capacidade', printSides: 'Lados'
+  };
+
+  function buildGenericCalculator(p) {
+    const o = p.options || {};
+    const labels = p.optionLabels || {};
+    const fields = Object.keys(o).filter(k => Array.isArray(o[k]) && o[k].length > 0);
+    return fields.map(field => {
+      const label = labels[field] || FIELD_LABELS_MAP[field] || field;
+      return buildSelect(`sel_${field}`, label, o[field].map(String), 'updatePrice()');
+    }).join('');
+  }
+
+  function getSelectionsGeneric(p) {
+    const sel = {};
+    const o = p.options || {};
+    Object.keys(o).forEach(field => {
+      const el = document.getElementById(`sel_${field}`);
+      if (!el) return;
+      const val = el.value;
+      sel[field] = isNaN(val) || val === '' ? val : Number(val);
+      // Aliases for calculatePrice compatibility
+      if (field === 'quantities') sel.quantity = sel[field];
+      if (field === 'widths')     sel.width    = sel[field];
+      if (field === 'heights')    sel.height   = sel[field];
+    });
+    return sel;
+  }
+
   // Build calculator by pricing type
   function buildCalculator(p) {
+    // If product has custom option prices, use generic builder
+    if (p.optionPrices && Object.keys(p.optionPrices).length > 0) {
+      return buildGenericCalculator(p);
+    }
     const o = p.options || {};
     let fields = '';
 
@@ -200,6 +242,10 @@
   }
 
   function getSelections(p) {
+    // Generic mode for custom-priced products
+    if (p.optionPrices && Object.keys(p.optionPrices).length > 0) {
+      return getSelectionsGeneric(p);
+    }
     const get = id => { const el = document.getElementById(id); return el ? el.value : null; };
     const type = p.pricingType;
     const sel = {};
@@ -272,7 +318,12 @@
 
     const p = currentProduct;
     let note = '';
-    if (p.pricingType === 'area') {
+    if (p.optionPrices && Object.keys(p.optionPrices).length > 0) {
+      // Generic note: show per-unit price if a quantity field exists
+      const qty = sel.quantity || sel.quantities;
+      if (qty) note = `${qty} un. × €${(net / qty).toFixed(3)}/un. = €${net.toFixed(2)} s/IVA`;
+      else note = `€${net.toFixed(2)} s/IVA`;
+    } else if (p.pricingType === 'area') {
       const w = sel.width || 1, h = sel.height || 1;
       const area = (w * h).toFixed(2);
       note = `${w}m × ${h}m = ${area}m²  ×  €${p.startingPrice.toFixed(2)}/m²  =  €${net.toFixed(2)} s/IVA`;
