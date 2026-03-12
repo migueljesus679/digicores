@@ -132,6 +132,8 @@
 <script>
   document.getElementById('cartCount').textContent = DigiDB.getCart().length;
 
+  const WEB3FORMS_KEY = '727cc58f-f42f-4d87-b656-55886db62ab8';
+
   async function submitContact(e) {
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
@@ -147,22 +149,52 @@
       message: document.getElementById('cf_message').value.trim()
     };
 
+    let emailStatus = 'sent';
+    let emailError;
+
     try {
-      const res = await fetch('/api/contact', {
+      // Enviar email via Web3Forms (client-side, sem restrições de IP)
+      const w3res = await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify({
+          access_key: WEB3FORMS_KEY,
+          from_name: `DigiCores — ${body.name}`,
+          replyto: body.email,
+          subject: `[DigiCores] ${body.subject} — ${body.name}`,
+          Nome: body.name,
+          Email: body.email,
+          Telefone: body.phone || '—',
+          Assunto: body.subject,
+          Mensagem: body.message
+        })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro desconhecido');
-
-      document.getElementById('contactForm').style.display = 'none';
-      document.getElementById('successMsg').style.display = 'block';
+      const w3data = await w3res.json();
+      if (!w3data.success) {
+        emailStatus = 'failed';
+        emailError = w3data.message;
+        throw new Error(w3data.message || 'Erro ao enviar email');
+      }
     } catch (err) {
+      emailStatus = 'failed';
+      emailError = err.message;
+    }
+
+    // Guardar registo no admin (independentemente do resultado do email)
+    await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...body, emailStatus, emailError })
+    }).catch(() => {});
+
+    if (emailStatus === 'failed') {
       document.getElementById('errorMsg').style.display = 'block';
-      document.getElementById('errorMsg').textContent = '❌ ' + (err.message || 'Erro ao enviar. Tente novamente.');
+      document.getElementById('errorMsg').textContent = '❌ ' + (emailError || 'Erro ao enviar. Tente novamente.');
       btn.disabled = false;
       btn.textContent = 'Enviar Mensagem';
+    } else {
+      document.getElementById('contactForm').style.display = 'none';
+      document.getElementById('successMsg').style.display = 'block';
     }
   }
 </script>
