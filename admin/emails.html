@@ -5,7 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Emails Recebidos - DigiCores Admin</title>
   <link rel="stylesheet" href="../css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+    h1,h2,h3,h4,h5,h6 { font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif; }
+
     .email-status-sent    { color: #16a34a; font-weight: 600; }
     .email-status-failed  { color: #dc2626; font-weight: 600; }
     .email-status-no_config { color: #d97706; font-weight: 600; }
@@ -17,82 +23,167 @@
       color: var(--text-muted);
       font-size: 13px;
     }
+
+    /* ── Modal Overlay ── */
     .modal-overlay {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
       z-index: 1000;
       align-items: center;
       justify-content: center;
+      padding: 20px;
     }
     .modal-overlay.open { display: flex; }
+
+    /* ── Modal Box ── */
     .modal-box {
-      background: var(--surface);
-      border-radius: var(--radius-lg);
-      padding: 32px;
-      max-width: 620px;
-      width: 95%;
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 0;
+      max-width: 640px;
+      width: 100%;
       max-height: 90vh;
       overflow-y: auto;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+      animation: modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.95) translateY(12px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* ── Modal Header ── */
     .modal-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-      border-bottom: 2px solid var(--border);
-      padding-bottom: 16px;
+      align-items: flex-start;
+      padding: 28px 32px 20px;
+      border-bottom: 1px solid #f0f0f0;
+      position: sticky;
+      top: 0;
+      background: #ffffff;
+      border-radius: 20px 20px 0 0;
+      z-index: 1;
+    }
+    .modal-header-left { display: flex; flex-direction: column; gap: 6px; }
+    .modal-header h3 {
+      font-size: 20px; font-weight: 700; margin: 0;
+      font-family: 'Poppins', sans-serif; color: #111;
+    }
+    .modal-header-meta {
+      font-size: 13px; color: #6c757d;
+      display: flex; align-items: center; gap: 10px;
     }
     .modal-close {
-      background: none;
+      background: #f5f5f5;
       border: none;
-      font-size: 22px;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      font-size: 16px;
       cursor: pointer;
-      color: var(--text-muted);
-      line-height: 1;
+      color: #555;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s ease, color 0.2s ease;
+      flex-shrink: 0;
+      margin-top: 2px;
     }
-    .modal-close:hover { color: var(--text); }
+    .modal-close:hover { background: #ffe8e0; color: #FF4500; }
+
+    /* ── Modal Body ── */
+    .modal-body { padding: 24px 32px 32px; }
+
+    /* ── Status Banner ── */
+    .modal-status-banner {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 18px; border-radius: 12px;
+      margin-bottom: 24px; font-weight: 600; font-size: 14px;
+    }
+    .modal-status-banner.sent    { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+    .modal-status-banner.failed  { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+    .modal-status-banner.no_config { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .modal-status-icon { font-size: 20px; }
+
+    /* ── Detail Fields ── */
+    .detail-section-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.2px; color: #aaa;
+      margin: 0 0 12px; font-family: 'Poppins', sans-serif;
+    }
+    .detail-fields {
+      background: #f8f9fa;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      border: 1px solid #f0f0f0;
+    }
     .detail-row {
       display: grid;
-      grid-template-columns: 130px 1fr;
-      gap: 8px;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--border);
+      grid-template-columns: 110px 1fr;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #efefef;
       font-size: 14px;
+      align-items: center;
     }
-    .detail-label { font-weight: 600; color: var(--text-muted); }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label {
+      font-weight: 600; color: #888;
+      font-size: 13px; font-family: 'Poppins', sans-serif;
+    }
+    .detail-value { color: #1a1a1a; word-break: break-word; }
+
+    /* ── Error Box ── */
+    .detail-error-box {
+      background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 10px; padding: 12px 16px;
+      font-size: 13px; color: #b91c1c; line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .detail-error-box strong { display: block; margin-bottom: 4px; }
+
+    /* ── Message Box ── */
+    .detail-message-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.2px; color: #aaa; margin-bottom: 10px;
+      font-family: 'Poppins', sans-serif;
+    }
     .detail-message {
-      margin-top: 16px;
-      background: var(--bg);
-      border-left: 4px solid var(--primary);
-      padding: 16px;
-      border-radius: 4px;
+      background: #f8f9fa;
+      border-left: 3px solid #FF4500;
+      border-radius: 0 10px 10px 0;
+      padding: 18px 20px;
       white-space: pre-wrap;
       font-size: 14px;
-      line-height: 1.6;
+      line-height: 1.75;
+      color: #333;
+      margin-bottom: 24px;
     }
+
+    /* ── Modal Footer ── */
+    .modal-footer {
+      display: flex; justify-content: flex-end; gap: 10px;
+      padding-top: 8px; border-top: 1px solid #f0f0f0;
+      margin-top: 8px;
+    }
+
+    /* ── Misc ── */
     .msg-id {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-family: monospace;
-      word-break: break-all;
+      font-size: 11px; color: #aaa;
+      font-family: monospace; word-break: break-all;
     }
     .status-dot {
       display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      margin-right: 6px;
+      width: 8px; height: 8px;
+      border-radius: 50%; margin-right: 6px;
     }
     .dot-sent    { background: #16a34a; }
     .dot-failed  { background: #dc2626; }
     .dot-no_config { background: #d97706; }
     .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--text-muted);
+      text-align: center; padding: 60px 20px; color: var(--text-muted);
     }
     .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
   </style>
@@ -183,10 +274,13 @@
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal-box" id="modalBox">
     <div class="modal-header">
-      <h3 id="modalTitle">Detalhe do Email</h3>
-      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+      <div class="modal-header-left">
+        <h3 id="modalTitle">Detalhe do Email</h3>
+        <div class="modal-header-meta" id="modalMeta"></div>
+      </div>
+      <button class="modal-close" onclick="closeModalDirect()" title="Fechar (Esc)">✕</button>
     </div>
-    <div id="modalContent"></div>
+    <div class="modal-body" id="modalContent"></div>
   </div>
 </div>
 
@@ -335,26 +429,71 @@
     const e = allEmails.find(x => x.id === id);
     if (!e) return;
 
-    const statusColors = { sent: '#16a34a', failed: '#dc2626', no_config: '#d97706' };
-    const statusLabels = { sent: '✅ Enviado com sucesso', failed: '❌ Falhou ao enviar', no_config: '⚠️ Email não enviado (sem configuração)' };
+    const statusConfig = {
+      sent:      { label: 'Enviado com sucesso',              icon: '✅', cls: 'sent'      },
+      failed:    { label: 'Falhou ao enviar',                 icon: '❌', cls: 'failed'    },
+      no_config: { label: 'Email não enviado (sem config.)',  icon: '⚠️', cls: 'no_config' }
+    };
+    const sc = statusConfig[e.status] || { label: e.status, icon: '📧', cls: 'no_config' };
 
-    document.getElementById('modalTitle').textContent = `Email de ${escHtml(e.name)}`;
+    document.getElementById('modalTitle').textContent = `Mensagem de ${escHtml(e.name)}`;
+    document.getElementById('modalMeta').innerHTML =
+      `<span>📅 ${formatDate(e.timestamp)}</span>
+       <span style="color:#ddd;">|</span>
+       <span>${escHtml(e.subject || 'Sem assunto')}</span>`;
+
     document.getElementById('modalContent').innerHTML = `
-      <div class="detail-row"><span class="detail-label">Data / Hora</span><span>${formatDate(e.timestamp)}</span></div>
-      <div class="detail-row"><span class="detail-label">Estado</span>
-        <span style="color:${statusColors[e.status]};font-weight:600;">${statusLabels[e.status] || e.status}</span>
+      <!-- Status banner -->
+      <div class="modal-status-banner ${sc.cls}">
+        <span class="modal-status-icon">${sc.icon}</span>
+        <span>${sc.label}</span>
       </div>
-      <div class="detail-row"><span class="detail-label">Nome</span><span>${escHtml(e.name)}</span></div>
-      <div class="detail-row"><span class="detail-label">Email</span>
-        <span><a href="mailto:${escHtml(e.email)}" style="color:var(--primary);">${escHtml(e.email)}</a></span>
+
+      <!-- Contact details -->
+      <div class="detail-section-title">Dados do Remetente</div>
+      <div class="detail-fields">
+        <div class="detail-row">
+          <span class="detail-label">Nome</span>
+          <span class="detail-value">${escHtml(e.name)}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Email</span>
+          <span class="detail-value">
+            <a href="mailto:${escHtml(e.email)}" style="color:var(--primary);font-weight:600;">${escHtml(e.email)}</a>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Telefone</span>
+          <span class="detail-value">${e.phone ? `<a href="tel:${escHtml(e.phone)}" style="color:var(--primary);">${escHtml(e.phone)}</a>` : '<span style="color:#bbb;">—</span>'}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Assunto</span>
+          <span class="detail-value">${escHtml(e.subject || '—')}</span>
+        </div>
       </div>
-      <div class="detail-row"><span class="detail-label">Telefone</span><span>${escHtml(e.phone || '—')}</span></div>
-      <div class="detail-row"><span class="detail-label">Assunto</span><span>${escHtml(e.subject || '—')}</span></div>
-      ${e.messageId ? `<div class="detail-row"><span class="detail-label">Message-ID</span><span class="msg-id">${escHtml(e.messageId)}</span></div>` : ''}
-      ${e.error ? `<div class="detail-row"><span class="detail-label">Erro</span><span style="color:#dc2626;">${escHtml(e.error)}</span></div>` : ''}
-      <div style="margin-top:16px;font-weight:600;font-size:14px;">Mensagem:</div>
+
+      ${e.error ? `
+      <!-- Error box -->
+      <div class="detail-error-box">
+        <strong>⚠️ Erro ao enviar email:</strong>
+        ${escHtml(e.error)}
+      </div>` : ''}
+
+      ${e.messageId ? `
+      <div class="detail-fields" style="margin-bottom:20px;">
+        <div class="detail-row">
+          <span class="detail-label">Message-ID</span>
+          <span class="detail-value msg-id">${escHtml(e.messageId)}</span>
+        </div>
+      </div>` : ''}
+
+      <!-- Message -->
+      <div class="detail-message-label">Mensagem</div>
       <div class="detail-message">${escHtml(e.message)}</div>
-      <div style="margin-top:20px;text-align:right;">
+
+      <!-- Footer actions -->
+      <div class="modal-footer">
+        <button class="btn btn-ghost btn-sm" onclick="closeModalDirect()">Fechar</button>
         <a href="mailto:${escHtml(e.email)}?subject=Re: ${encodeURIComponent(e.subject || 'Contacto DigiCores')}"
            class="btn btn-primary btn-sm">↩ Responder por Email</a>
       </div>`;
