@@ -108,9 +108,28 @@
               <div class="form-row">
                 <div class="form-group">
                   <label>Categoria *</label>
-                  <select id="category" required>
-                    <option value="">Selecionar...</option>
-                  </select>
+                  <div style="display:flex;gap:8px;align-items:flex-start;">
+                    <select id="category" required style="flex:1;">
+                      <option value="">Selecionar...</option>
+                    </select>
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="showNewCategoryForm()" title="Criar nova categoria" style="white-space:nowrap;height:42px;padding:0 12px;">＋ Nova</button>
+                  </div>
+                  <div id="newCategoryForm" style="display:none;margin-top:8px;padding:14px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">
+                    <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;">Nova Categoria</p>
+                    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+                      <div style="flex:0 0 auto;">
+                        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Ícone</div>
+                        <input type="text" id="newCategoryIcon" value="🏷️" maxlength="4" style="width:60px;text-align:center;font-size:18px;padding:6px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;" />
+                      </div>
+                      <div style="flex:1;min-width:150px;">
+                        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Nome *</div>
+                        <input type="text" id="newCategoryName" placeholder="Ex: Papelaria" style="width:100%;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 10px;font-size:13px;font-family:inherit;"
+                          onkeydown="if(event.key==='Enter'){event.preventDefault();saveNewCategory();}" />
+                      </div>
+                      <button type="button" class="btn btn-primary btn-sm" onclick="saveNewCategory()">Criar</button>
+                      <button type="button" class="btn btn-ghost btn-sm" onclick="hideNewCategoryForm()">Cancelar</button>
+                    </div>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label>Subcategoria</label>
@@ -137,20 +156,40 @@
               <div class="form-row">
                 <div class="form-group">
                   <label>Tipo de Cálculo de Preço *</label>
-                  <select id="pricingType" required onchange="onPricingTypeChange()">
-                    <option value="">Selecionar...</option>
-                    <option value="flyer">Flyer (qty + tamanho + papel)</option>
-                    <option value="cartao">Cartão de Visita (qty + acabamento)</option>
-                    <option value="folheto">Folheto Desdobrável (qty + dobra)</option>
-                    <option value="envelope">Envelope (qty + formato)</option>
-                    <option value="autocolante">Autocolante (qty + tamanho + material)</option>
-                    <option value="etiqueta">Etiqueta (qty + forma + material)</option>
-                    <option value="brinde-unidade">Brinde por Unidade (qty * preço unit.)</option>
-                    <option value="rollup">Roll-Up / Expositor por Tamanho</option>
-                    <option value="expositor">Expositor Pop-Up (tamanho + acessórios)</option>
-                    <option value="area">Área (€/m²) — lonas, placas</option>
-                    <option value="textil">Têxtil (qty + tamanho + técnica)</option>
-                  </select>
+                  <div style="display:flex;gap:8px;align-items:flex-start;">
+                    <select id="pricingType" required onchange="onPricingTypeChange()" style="flex:1;">
+                      <option value="">Selecionar...</option>
+                      <option value="flyer">Flyer (qty + tamanho + papel)</option>
+                      <option value="cartao">Cartão de Visita (qty + acabamento)</option>
+                      <option value="folheto">Folheto Desdobrável (qty + dobra)</option>
+                      <option value="envelope">Envelope (qty + formato)</option>
+                      <option value="autocolante">Autocolante (qty + tamanho + material)</option>
+                      <option value="etiqueta">Etiqueta (qty + forma + material)</option>
+                      <option value="brinde-unidade">Brinde por Unidade (qty * preço unit.)</option>
+                      <option value="rollup">Roll-Up / Expositor por Tamanho</option>
+                      <option value="expositor">Expositor Pop-Up (tamanho + acessórios)</option>
+                      <option value="area">Área (€/m²) — lonas, placas</option>
+                      <option value="textil">Têxtil (qty + tamanho + técnica)</option>
+                    </select>
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="showNewPricingTypeForm()" title="Criar novo tipo de cálculo" style="white-space:nowrap;height:42px;padding:0 12px;">＋ Novo</button>
+                  </div>
+                  <div id="newPricingTypeForm" style="display:none;margin-top:8px;padding:14px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">
+                    <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:4px;">Novo Tipo de Cálculo</p>
+                    <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Cria um tipo personalizado com campos de opções à medida. O preço é calculado pelo motor de preços customizado.</p>
+                    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+                      <div style="flex:2;min-width:160px;">
+                        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Nome do Tipo *</div>
+                        <input type="text" id="newPricingTypeName" placeholder="Ex: Cadernos, Rótulos, Displays..." style="width:100%;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 10px;font-size:13px;font-family:inherit;"
+                          onkeydown="if(event.key==='Enter'){event.preventDefault();saveNewPricingType();}" />
+                      </div>
+                      <div style="flex:3;min-width:180px;">
+                        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Descrição (opcional)</div>
+                        <input type="text" id="newPricingTypeDesc" placeholder="Ex: qty + formato + acabamento" style="width:100%;border:1.5px solid var(--border);border-radius:var(--radius);padding:8px 10px;font-size:13px;font-family:inherit;" />
+                      </div>
+                      <button type="button" class="btn btn-primary btn-sm" onclick="saveNewPricingType()">Criar</button>
+                      <button type="button" class="btn btn-ghost btn-sm" onclick="hideNewPricingTypeForm()">Cancelar</button>
+                    </div>
+                  </div>
                   <div id="pricingTypeInfo" class="pricing-type-info" style="display:none;"></div>
                 </div>
                 <div class="form-group">
@@ -408,8 +447,85 @@
 
   function initCategories() {
     const sel = document.getElementById('category');
+    const current = sel.value;
     sel.innerHTML = '<option value="">Selecionar...</option>' +
       DigiDB.getCategories().map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+    if (current) sel.value = current;
+  }
+
+  function initPricingTypes() {
+    const sel = document.getElementById('pricingType');
+    // Remove previous custom options (those starting with 'custom_')
+    Array.from(sel.options).filter(o => o.value.startsWith('custom_')).forEach(o => o.remove());
+    const customs = DigiDB.getPricingTypes();
+    if (customs.length > 0) {
+      const group = document.createElement('optgroup');
+      group.label = 'Tipos Personalizados';
+      customs.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.desc ? `${t.name} (${t.desc})` : t.name;
+        group.appendChild(opt);
+      });
+      sel.appendChild(group);
+    }
+  }
+
+  function showNewCategoryForm() {
+    document.getElementById('newCategoryForm').style.display = 'block';
+    document.getElementById('newCategoryName').focus();
+  }
+
+  function hideNewCategoryForm() {
+    document.getElementById('newCategoryForm').style.display = 'none';
+    document.getElementById('newCategoryName').value = '';
+    document.getElementById('newCategoryIcon').value = '🏷️';
+  }
+
+  function saveNewCategory() {
+    const nameEl = document.getElementById('newCategoryName');
+    const iconEl = document.getElementById('newCategoryIcon');
+    const name = nameEl.value.trim();
+    if (!name) { nameEl.focus(); showToast('Introduza o nome da categoria.', 'error'); return; }
+    const icon = iconEl.value.trim() || '🏷️';
+    const id = name.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-').replace(/^-|-$/g, '') + '_' + Date.now();
+    DigiDB.createCategory({ id, name, icon });
+    initCategories();
+    document.getElementById('category').value = id;
+    hideNewCategoryForm();
+    showToast(`Categoria "${name}" criada!`, 'success');
+  }
+
+  function showNewPricingTypeForm() {
+    document.getElementById('newPricingTypeForm').style.display = 'block';
+    document.getElementById('newPricingTypeName').focus();
+  }
+
+  function hideNewPricingTypeForm() {
+    document.getElementById('newPricingTypeForm').style.display = 'none';
+    document.getElementById('newPricingTypeName').value = '';
+    document.getElementById('newPricingTypeDesc').value = '';
+  }
+
+  function saveNewPricingType() {
+    const nameEl = document.getElementById('newPricingTypeName');
+    const descEl = document.getElementById('newPricingTypeDesc');
+    const name = nameEl.value.trim();
+    if (!name) { nameEl.focus(); showToast('Introduza o nome do tipo.', 'error'); return; }
+    const desc = descEl.value.trim();
+    const id = 'custom_' + name.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-').replace(/^-|-$/g, '') + '_' + Date.now();
+    DigiDB.createPricingType({ id, name, desc });
+    initPricingTypes();
+    document.getElementById('pricingType').value = id;
+    hideNewPricingTypeForm();
+    onPricingTypeChange();
+    showToast(`Tipo "${name}" criado!`, 'success');
   }
 
   function previewImage() {
@@ -423,6 +539,12 @@
     const infoEl = document.getElementById('pricingTypeInfo');
     if (type && PRICING_TYPE_INFO[type]) {
       infoEl.textContent = PRICING_TYPE_INFO[type];
+      infoEl.style.display = 'block';
+    } else if (type && type.startsWith('custom_')) {
+      const custom = DigiDB.getPricingTypes().find(t => t.id === type);
+      infoEl.textContent = custom && custom.desc
+        ? `⚙️ Tipo personalizado: ${custom.desc}. Configure os campos de opções abaixo e defina os preços por valor.`
+        : '⚙️ Tipo de cálculo personalizado. Configure os campos de opções abaixo e defina os preços por valor usando o motor de preços customizado.';
       infoEl.style.display = 'block';
     } else {
       infoEl.style.display = 'none';
@@ -982,6 +1104,7 @@
 
   // Init
   initCategories();
+  initPricingTypes();
 
   const params = new URLSearchParams(window.location.search);
   const editId = params.get('id');

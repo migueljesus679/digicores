@@ -5,6 +5,8 @@
 const DigiDB = (() => {
   const PRODUCTS_KEY = 'digicores_products';
   const CART_KEY = 'digicores_cart';
+  const CUSTOM_CATEGORIES_KEY = 'digicores_custom_categories';
+  const CUSTOM_PRICING_TYPES_KEY = 'digicores_custom_pricing_types';
 
   // ── Seed Data ──────────────────────────────
   const seedProducts = [
@@ -687,7 +689,7 @@ const DigiDB = (() => {
   }
 
   function getCategories() {
-    return [
+    const defaults = [
       { id: 'pequeno-formato', name: 'Pequeno Formato', icon: '🗒️' },
       { id: 'autocolantes', name: 'Autocolantes', icon: '🏷️' },
       { id: 'brindes', name: 'Brindes', icon: '🎁' },
@@ -696,6 +698,30 @@ const DigiDB = (() => {
       { id: 'placas', name: 'Placas', icon: '🪧' },
       { id: 'texteis', name: 'Têxteis', icon: '👕' }
     ];
+    const stored = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
+    const custom = stored ? JSON.parse(stored) : [];
+    return [...defaults, ...custom];
+  }
+
+  function createCategory(data) {
+    const stored = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
+    const custom = stored ? JSON.parse(stored) : [];
+    custom.push(data);
+    localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(custom));
+    return data;
+  }
+
+  function getPricingTypes() {
+    const stored = localStorage.getItem(CUSTOM_PRICING_TYPES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  function createPricingType(data) {
+    const stored = localStorage.getItem(CUSTOM_PRICING_TYPES_KEY);
+    const types = stored ? JSON.parse(stored) : [];
+    types.push(data);
+    localStorage.setItem(CUSTOM_PRICING_TYPES_KEY, JSON.stringify(types));
+    return data;
   }
 
   // ── Cart ────────────────────────────────────
@@ -736,7 +762,9 @@ const DigiDB = (() => {
 
   return {
     getProducts, getProduct, createProduct, updateProduct, deleteProduct,
-    getCategories, calculatePrice,
+    getCategories, createCategory,
+    getPricingTypes, createPricingType,
+    calculatePrice,
     getCart, addToCart, removeFromCart, clearCart, resetToSeed
   };
 })();
