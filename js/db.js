@@ -711,6 +711,22 @@ const DigiDB = (() => {
     return data;
   }
 
+  function updateCategory(id, data) {
+    const stored = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
+    const custom = stored ? JSON.parse(stored) : [];
+    const idx = custom.findIndex(c => c.id === id);
+    if (idx === -1) return null;
+    custom[idx] = { ...custom[idx], ...data };
+    localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(custom));
+    return custom[idx];
+  }
+
+  function deleteCategory(id) {
+    const stored = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
+    const custom = stored ? JSON.parse(stored) : [];
+    localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(custom.filter(c => c.id !== id)));
+  }
+
   function getPricingTypes() {
     const stored = localStorage.getItem(CUSTOM_PRICING_TYPES_KEY);
     return stored ? JSON.parse(stored) : [];
@@ -722,6 +738,22 @@ const DigiDB = (() => {
     types.push(data);
     localStorage.setItem(CUSTOM_PRICING_TYPES_KEY, JSON.stringify(types));
     return data;
+  }
+
+  function updatePricingType(id, data) {
+    const stored = localStorage.getItem(CUSTOM_PRICING_TYPES_KEY);
+    const types = stored ? JSON.parse(stored) : [];
+    const idx = types.findIndex(t => t.id === id);
+    if (idx === -1) return null;
+    types[idx] = { ...types[idx], ...data };
+    localStorage.setItem(CUSTOM_PRICING_TYPES_KEY, JSON.stringify(types));
+    return types[idx];
+  }
+
+  function deletePricingType(id) {
+    const stored = localStorage.getItem(CUSTOM_PRICING_TYPES_KEY);
+    const types = stored ? JSON.parse(stored) : [];
+    localStorage.setItem(CUSTOM_PRICING_TYPES_KEY, JSON.stringify(types.filter(t => t.id !== id)));
   }
 
   // ── Cart ────────────────────────────────────
@@ -762,8 +794,8 @@ const DigiDB = (() => {
 
   return {
     getProducts, getProduct, createProduct, updateProduct, deleteProduct,
-    getCategories, createCategory,
-    getPricingTypes, createPricingType,
+    getCategories, createCategory, updateCategory, deleteCategory,
+    getPricingTypes, createPricingType, updatePricingType, deletePricingType,
     calculatePrice,
     getCart, addToCart, removeFromCart, clearCart, resetToSeed
   };
