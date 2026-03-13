@@ -178,20 +178,8 @@
   const session = DigiAuth.getSession();
   if (session) document.getElementById('userName').textContent = session.name;
 
-  // ── Defaults (display-only, non-editable) ──────────────────────────────
-  const DEFAULT_PRICING_TYPES = [
-    { id: 'flyer',          name: 'Flyer',                 desc: 'qty + tamanho + papel' },
-    { id: 'cartao',         name: 'Cartão de Visita',      desc: 'qty + acabamento' },
-    { id: 'folheto',        name: 'Folheto Desdobrável',   desc: 'qty + dobra' },
-    { id: 'envelope',       name: 'Envelope',              desc: 'qty + formato' },
-    { id: 'autocolante',    name: 'Autocolante',           desc: 'qty + tamanho + material' },
-    { id: 'etiqueta',       name: 'Etiqueta',              desc: 'qty + forma + material' },
-    { id: 'brinde-unidade', name: 'Brinde por Unidade',    desc: 'qty × preço/un.' },
-    { id: 'rollup',         name: 'Roll-Up / Expositor',   desc: 'tamanho + material' },
-    { id: 'expositor',      name: 'Expositor Pop-Up',      desc: 'tamanho + acessórios' },
-    { id: 'area',           name: 'Área (€/m²)',           desc: 'lonas, placas' },
-    { id: 'textil',         name: 'Têxtil',                desc: 'qty + tamanho + técnica' },
-  ];
+  const DEFAULT_CATEGORY_IDS     = ['pequeno-formato','autocolantes','brindes','expositores','lonas','placas','texteis'];
+  const DEFAULT_PRICING_TYPE_IDS = ['flyer','cartao','folheto','envelope','autocolante','etiqueta','brinde-unidade','rollup','expositor','area','textil'];
 
   // ── Toast ────────────────────────────────────────────────────────────────
   function showToast(msg, type = '') {
@@ -293,17 +281,11 @@
   }
 
   function renderCategories() {
-    const defaults = [
-      { id: 'pequeno-formato', name: 'Pequeno Formato', icon: '🗒️', isDefault: true },
-      { id: 'autocolantes',    name: 'Autocolantes',    icon: '🏷️', isDefault: true },
-      { id: 'brindes',         name: 'Brindes',         icon: '🎁', isDefault: true },
-      { id: 'expositores',     name: 'Expositores',     icon: '🖼️', isDefault: true },
-      { id: 'lonas',           name: 'Lonas',           icon: '🎪', isDefault: true },
-      { id: 'placas',          name: 'Placas',          icon: '🪧', isDefault: true },
-      { id: 'texteis',         name: 'Têxteis',         icon: '👕', isDefault: true },
-    ];
-    const custom = DigiDB.getCategories().filter(c => !defaults.find(d => d.id === c.id));
-    const all = [...defaults, ...custom.map(c => ({ ...c, isDefault: false }))];
+    // getCategories() already applies overrides and filters hidden defaults
+    const all = DigiDB.getCategories().map(c => ({
+      ...c,
+      isDefault: DEFAULT_CATEGORY_IDS.includes(c.id)
+    }));
 
     const tbody = document.getElementById('categoriesTbody');
     if (all.length === 0) {
@@ -317,16 +299,12 @@
         <td style="font-weight:500;">${esc(c.name)}</td>
         <td><span class="${c.isDefault ? 'badge-default' : 'badge-custom'}">${c.isDefault ? 'Padrão' : 'Custom'}</span></td>
         <td>
-          ${c.isDefault
-            ? `<span style="font-size:12px;color:var(--text-muted);">—</span>`
-            : `<div class="table-actions">
-                <button class="action-btn action-btn-edit" onclick="openCategoryEditRow('${esc(c.id)}')">✏️</button>
-                <button class="action-btn action-btn-delete" onclick="openDeleteDialog('category','${esc(c.id)}','${esc(c.name)}')">🗑️</button>
-               </div>`
-          }
+          <div class="table-actions">
+            <button class="action-btn action-btn-edit" onclick="openCategoryEditRow('${esc(c.id)}')">✏️</button>
+            <button class="action-btn action-btn-delete" onclick="openDeleteDialog('category','${esc(c.id)}','${esc(c.name)}')">🗑️</button>
+          </div>
         </td>
       </tr>
-      ${!c.isDefault ? `
       <tr id="cat-edit-${esc(c.id)}" style="background:rgba(255,69,0,0.02);">
         <td colspan="4" style="padding:0;">
           <div class="row-edit-form">
@@ -343,7 +321,7 @@
             <button class="btn btn-ghost btn-sm" style="align-self:flex-end;" onclick="cancelCategoryEdit('${esc(c.id)}')">Cancelar</button>
           </div>
         </td>
-      </tr>` : ''}
+      </tr>
     `).join('');
   }
 
@@ -395,29 +373,29 @@
   }
 
   function renderPricingTypes() {
-    const custom = DigiDB.getPricingTypes();
-    const all = [
-      ...DEFAULT_PRICING_TYPES.map(t => ({ ...t, isDefault: true })),
-      ...custom.map(t => ({ ...t, isDefault: false }))
-    ];
+    // getDefaultPricingTypesList() applies overrides and filters hidden
+    const defaults = DigiDB.getDefaultPricingTypesList().map(t => ({ ...t, isDefault: true }));
+    const custom   = DigiDB.getPricingTypes().map(t => ({ ...t, isDefault: false }));
+    const all = [...defaults, ...custom];
 
     const tbody = document.getElementById('pricingTypesTbody');
+    if (all.length === 0) {
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="4">Nenhum tipo encontrado.</td></tr>`;
+      return;
+    }
+
     tbody.innerHTML = all.map(t => `
       <tr id="pt-row-${esc(t.id)}">
         <td style="font-weight:500;">${esc(t.name)}</td>
         <td style="color:var(--text-muted);font-size:13px;">${esc(t.desc || '—')}</td>
         <td><span class="${t.isDefault ? 'badge-default' : 'badge-custom'}">${t.isDefault ? 'Padrão' : 'Custom'}</span></td>
         <td>
-          ${t.isDefault
-            ? `<span style="font-size:12px;color:var(--text-muted);">—</span>`
-            : `<div class="table-actions">
-                <button class="action-btn action-btn-edit" onclick="openPricingTypeEditRow('${esc(t.id)}')">✏️</button>
-                <button class="action-btn action-btn-delete" onclick="openDeleteDialog('pricingType','${esc(t.id)}','${esc(t.name)}')">🗑️</button>
-               </div>`
-          }
+          <div class="table-actions">
+            <button class="action-btn action-btn-edit" onclick="openPricingTypeEditRow('${esc(t.id)}')">✏️</button>
+            <button class="action-btn action-btn-delete" onclick="openDeleteDialog('pricingType','${esc(t.id)}','${esc(t.name)}')">🗑️</button>
+          </div>
         </td>
       </tr>
-      ${!t.isDefault ? `
       <tr id="pt-edit-${esc(t.id)}" style="background:rgba(255,69,0,0.02);">
         <td colspan="4" style="padding:0;">
           <div class="row-edit-form">
@@ -434,7 +412,7 @@
             <button class="btn btn-ghost btn-sm" style="align-self:flex-end;" onclick="cancelPricingTypeEdit('${esc(t.id)}')">Cancelar</button>
           </div>
         </td>
-      </tr>` : ''}
+      </tr>
     `).join('');
   }
 

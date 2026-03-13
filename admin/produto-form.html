@@ -160,17 +160,6 @@
                   <div style="display:flex;gap:8px;align-items:flex-start;">
                     <select id="pricingType" required onchange="onPricingTypeChange()" style="flex:1;">
                       <option value="">Selecionar...</option>
-                      <option value="flyer">Flyer (qty + tamanho + papel)</option>
-                      <option value="cartao">Cartão de Visita (qty + acabamento)</option>
-                      <option value="folheto">Folheto Desdobrável (qty + dobra)</option>
-                      <option value="envelope">Envelope (qty + formato)</option>
-                      <option value="autocolante">Autocolante (qty + tamanho + material)</option>
-                      <option value="etiqueta">Etiqueta (qty + forma + material)</option>
-                      <option value="brinde-unidade">Brinde por Unidade (qty * preço unit.)</option>
-                      <option value="rollup">Roll-Up / Expositor por Tamanho</option>
-                      <option value="expositor">Expositor Pop-Up (tamanho + acessórios)</option>
-                      <option value="area">Área (€/m²) — lonas, placas</option>
-                      <option value="textil">Têxtil (qty + tamanho + técnica)</option>
                     </select>
                     <button type="button" class="btn btn-ghost btn-sm" onclick="showNewPricingTypeForm()" title="Criar novo tipo de cálculo" style="white-space:nowrap;height:42px;padding:0 12px;">＋ Novo</button>
                   </div>
@@ -456,8 +445,18 @@
 
   function initPricingTypes() {
     const sel = document.getElementById('pricingType');
-    // Remove previous custom options (those starting with 'custom_')
-    Array.from(sel.options).filter(o => o.value.startsWith('custom_')).forEach(o => o.remove());
+    const current = sel.value;
+
+    // Rebuild entirely: defaults (respecting hidden/overrides) + custom
+    sel.innerHTML = '<option value="">Selecionar...</option>';
+
+    DigiDB.getDefaultPricingTypesList().forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.desc ? `${t.name} (${t.desc})` : t.name;
+      sel.appendChild(opt);
+    });
+
     const customs = DigiDB.getPricingTypes();
     if (customs.length > 0) {
       const group = document.createElement('optgroup');
@@ -470,6 +469,8 @@
       });
       sel.appendChild(group);
     }
+
+    if (current) sel.value = current;
   }
 
   function showNewCategoryForm() {

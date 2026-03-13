@@ -5,8 +5,15 @@
 const DigiDB = (() => {
   const PRODUCTS_KEY = 'digicores_products';
   const CART_KEY = 'digicores_cart';
-  const CUSTOM_CATEGORIES_KEY = 'digicores_custom_categories';
-  const CUSTOM_PRICING_TYPES_KEY = 'digicores_custom_pricing_types';
+  const CUSTOM_CATEGORIES_KEY       = 'digicores_custom_categories';
+  const CATEGORY_OVERRIDES_KEY      = 'digicores_category_overrides';
+  const HIDDEN_CATEGORIES_KEY       = 'digicores_hidden_categories';
+  const CUSTOM_PRICING_TYPES_KEY    = 'digicores_custom_pricing_types';
+  const PRICING_TYPE_OVERRIDES_KEY  = 'digicores_pricing_type_overrides';
+  const HIDDEN_PRICING_TYPES_KEY    = 'digicores_hidden_pricing_types';
+
+  const DEFAULT_CATEGORY_IDS = ['pequeno-formato','autocolantes','brindes','expositores','lonas','placas','texteis'];
+  const DEFAULT_PRICING_TYPE_IDS = ['flyer','cartao','folheto','envelope','autocolante','etiqueta','brinde-unidade','rollup','expositor','area','textil'];
 
   // ── Seed Data ──────────────────────────────
   const seedProducts = [
@@ -689,31 +696,39 @@ const DigiDB = (() => {
   }
 
   function getCategories() {
-    const defaults = [
+    const DEFAULTS = [
       { id: 'pequeno-formato', name: 'Pequeno Formato', icon: '🗒️' },
-      { id: 'autocolantes', name: 'Autocolantes', icon: '🏷️' },
-      { id: 'brindes', name: 'Brindes', icon: '🎁' },
-      { id: 'expositores', name: 'Expositores', icon: '🖼️' },
-      { id: 'lonas', name: 'Lonas', icon: '🎪' },
-      { id: 'placas', name: 'Placas', icon: '🪧' },
-      { id: 'texteis', name: 'Têxteis', icon: '👕' }
+      { id: 'autocolantes',    name: 'Autocolantes',    icon: '🏷️' },
+      { id: 'brindes',         name: 'Brindes',         icon: '🎁' },
+      { id: 'expositores',     name: 'Expositores',     icon: '🖼️' },
+      { id: 'lonas',           name: 'Lonas',           icon: '🎪' },
+      { id: 'placas',          name: 'Placas',          icon: '🪧' },
+      { id: 'texteis',         name: 'Têxteis',         icon: '👕' }
     ];
-    const stored = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
-    const custom = stored ? JSON.parse(stored) : [];
+    const overrides = JSON.parse(localStorage.getItem(CATEGORY_OVERRIDES_KEY) || '{}');
+    const hidden    = JSON.parse(localStorage.getItem(HIDDEN_CATEGORIES_KEY)  || '[]');
+    const custom    = JSON.parse(localStorage.getItem(CUSTOM_CATEGORIES_KEY)  || '[]');
+    const defaults  = DEFAULTS
+      .filter(c => !hidden.includes(c.id))
+      .map(c => overrides[c.id] ? { ...c, ...overrides[c.id] } : c);
     return [...defaults, ...custom];
   }
 
   function createCategory(data) {
-    const stored = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
-    const custom = stored ? JSON.parse(stored) : [];
+    const custom = JSON.parse(localStorage.getItem(CUSTOM_CATEGORIES_KEY) || '[]');
     custom.push(data);
     localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(custom));
     return data;
   }
 
   function updateCategory(id, data) {
-    const stored = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
-    const custom = stored ? JSON.parse(stored) : [];
+    if (DEFAULT_CATEGORY_IDS.includes(id)) {
+      const overrides = JSON.parse(localStorage.getItem(CATEGORY_OVERRIDES_KEY) || '{}');
+      overrides[id] = { ...(overrides[id] || {}), ...data };
+      localStorage.setItem(CATEGORY_OVERRIDES_KEY, JSON.stringify(overrides));
+      return { id, ...data };
+    }
+    const custom = JSON.parse(localStorage.getItem(CUSTOM_CATEGORIES_KEY) || '[]');
     const idx = custom.findIndex(c => c.id === id);
     if (idx === -1) return null;
     custom[idx] = { ...custom[idx], ...data };
@@ -722,27 +737,55 @@ const DigiDB = (() => {
   }
 
   function deleteCategory(id) {
-    const stored = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
-    const custom = stored ? JSON.parse(stored) : [];
-    localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(custom.filter(c => c.id !== id)));
+    if (DEFAULT_CATEGORY_IDS.includes(id)) {
+      const hidden = JSON.parse(localStorage.getItem(HIDDEN_CATEGORIES_KEY) || '[]');
+      if (!hidden.includes(id)) { hidden.push(id); localStorage.setItem(HIDDEN_CATEGORIES_KEY, JSON.stringify(hidden)); }
+    } else {
+      const custom = JSON.parse(localStorage.getItem(CUSTOM_CATEGORIES_KEY) || '[]');
+      localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(custom.filter(c => c.id !== id)));
+    }
+  }
+
+  function getDefaultPricingTypesList() {
+    const DEFAULTS = [
+      { id: 'flyer',          name: 'Flyer',                desc: 'qty + tamanho + papel' },
+      { id: 'cartao',         name: 'Cartão de Visita',     desc: 'qty + acabamento' },
+      { id: 'folheto',        name: 'Folheto Desdobrável',  desc: 'qty + dobra' },
+      { id: 'envelope',       name: 'Envelope',             desc: 'qty + formato' },
+      { id: 'autocolante',    name: 'Autocolante',          desc: 'qty + tamanho + material' },
+      { id: 'etiqueta',       name: 'Etiqueta',             desc: 'qty + forma + material' },
+      { id: 'brinde-unidade', name: 'Brinde por Unidade',   desc: 'qty × preço/un.' },
+      { id: 'rollup',         name: 'Roll-Up / Expositor',  desc: 'tamanho + material' },
+      { id: 'expositor',      name: 'Expositor Pop-Up',     desc: 'tamanho + acessórios' },
+      { id: 'area',           name: 'Área (€/m²)',          desc: 'lonas, placas' },
+      { id: 'textil',         name: 'Têxtil',               desc: 'qty + tamanho + técnica' },
+    ];
+    const overrides = JSON.parse(localStorage.getItem(PRICING_TYPE_OVERRIDES_KEY) || '{}');
+    const hidden    = JSON.parse(localStorage.getItem(HIDDEN_PRICING_TYPES_KEY)   || '[]');
+    return DEFAULTS
+      .filter(t => !hidden.includes(t.id))
+      .map(t => overrides[t.id] ? { ...t, ...overrides[t.id] } : t);
   }
 
   function getPricingTypes() {
-    const stored = localStorage.getItem(CUSTOM_PRICING_TYPES_KEY);
-    return stored ? JSON.parse(stored) : [];
+    return JSON.parse(localStorage.getItem(CUSTOM_PRICING_TYPES_KEY) || '[]');
   }
 
   function createPricingType(data) {
-    const stored = localStorage.getItem(CUSTOM_PRICING_TYPES_KEY);
-    const types = stored ? JSON.parse(stored) : [];
+    const types = JSON.parse(localStorage.getItem(CUSTOM_PRICING_TYPES_KEY) || '[]');
     types.push(data);
     localStorage.setItem(CUSTOM_PRICING_TYPES_KEY, JSON.stringify(types));
     return data;
   }
 
   function updatePricingType(id, data) {
-    const stored = localStorage.getItem(CUSTOM_PRICING_TYPES_KEY);
-    const types = stored ? JSON.parse(stored) : [];
+    if (DEFAULT_PRICING_TYPE_IDS.includes(id)) {
+      const overrides = JSON.parse(localStorage.getItem(PRICING_TYPE_OVERRIDES_KEY) || '{}');
+      overrides[id] = { ...(overrides[id] || {}), ...data };
+      localStorage.setItem(PRICING_TYPE_OVERRIDES_KEY, JSON.stringify(overrides));
+      return { id, ...data };
+    }
+    const types = JSON.parse(localStorage.getItem(CUSTOM_PRICING_TYPES_KEY) || '[]');
     const idx = types.findIndex(t => t.id === id);
     if (idx === -1) return null;
     types[idx] = { ...types[idx], ...data };
@@ -751,9 +794,13 @@ const DigiDB = (() => {
   }
 
   function deletePricingType(id) {
-    const stored = localStorage.getItem(CUSTOM_PRICING_TYPES_KEY);
-    const types = stored ? JSON.parse(stored) : [];
-    localStorage.setItem(CUSTOM_PRICING_TYPES_KEY, JSON.stringify(types.filter(t => t.id !== id)));
+    if (DEFAULT_PRICING_TYPE_IDS.includes(id)) {
+      const hidden = JSON.parse(localStorage.getItem(HIDDEN_PRICING_TYPES_KEY) || '[]');
+      if (!hidden.includes(id)) { hidden.push(id); localStorage.setItem(HIDDEN_PRICING_TYPES_KEY, JSON.stringify(hidden)); }
+    } else {
+      const types = JSON.parse(localStorage.getItem(CUSTOM_PRICING_TYPES_KEY) || '[]');
+      localStorage.setItem(CUSTOM_PRICING_TYPES_KEY, JSON.stringify(types.filter(t => t.id !== id)));
+    }
   }
 
   // ── Cart ────────────────────────────────────
@@ -795,7 +842,7 @@ const DigiDB = (() => {
   return {
     getProducts, getProduct, createProduct, updateProduct, deleteProduct,
     getCategories, createCategory, updateCategory, deleteCategory,
-    getPricingTypes, createPricingType, updatePricingType, deletePricingType,
+    getDefaultPricingTypesList, getPricingTypes, createPricingType, updatePricingType, deletePricingType,
     calculatePrice,
     getCart, addToCart, removeFromCart, clearCart, resetToSeed
   };
