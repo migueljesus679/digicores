@@ -1,5 +1,5 @@
 // =============================================
-// DigiCores - Servidor Node.js (Stripe Backend)
+// Grafica Comercial - Servidor Node.js (Stripe Backend)
 // =============================================
 // Instalar dependências: npm install
 // Arrancar servidor: node server.js
@@ -169,6 +169,6 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), (req, res) =
 // ── Arrancar servidor ────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`\n🚀 DigiCores servidor em http://localhost:${PORT}`);
+  console.log(`\n🚀 Grafica Comercial servidor em http://localhost:${PORT}`);
   console.log('   Abra o browser em http://localhost:3000\n');
 });

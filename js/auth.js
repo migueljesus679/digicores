@@ -1,5 +1,5 @@
 // =============================================
-// DigiCores - Authentication
+// Grafica Comercial - Authentication
 // =============================================
 
 const DigiAuth = (() => {

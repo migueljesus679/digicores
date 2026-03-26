@@ -1,5 +1,5 @@
 // =============================================
-// DigiCores - Data Layer (localStorage)
+// Grafica Comercial - Data Layer (localStorage)
 // =============================================
 
 const DigiDB = (() => {
