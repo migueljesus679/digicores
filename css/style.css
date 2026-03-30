@@ -6,9 +6,9 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --primary: #FF4500;
-  --primary-dark: #cc3700;
-  --primary-light: #ff6a33;
+  --primary: #053ea1;
+  --primary-dark: #032d7a;
+  --primary-light: #1a5cbf;
   --dark: #111111;
   --dark-2: #1e1e1e;
   --text: #212529;
@@ -32,11 +32,11 @@
   /* Enhanced visual system */
   --font-heading: 'Poppins', 'Segoe UI', system-ui, sans-serif;
   --font-body: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  --primary-gradient: linear-gradient(135deg, #FF4500 0%, #FF6B00 50%, #FF8C00 100%);
-  --primary-gradient-vivid: linear-gradient(135deg, #FF2D00 0%, #FF4500 40%, #FF6B35 100%);
+  --primary-gradient: linear-gradient(135deg, #053ea1 0%, #066aab 50%, #1a7cc4 100%);
+  --primary-gradient-vivid: linear-gradient(135deg, #032d7a 0%, #053ea1 40%, #1a5cbf 100%);
   --glass-bg: rgba(255, 255, 255, 0.06);
   --glass-border: rgba(255, 255, 255, 0.12);
-  --shadow-primary: 0 8px 32px rgba(255, 69, 0, 0.28);
+  --shadow-primary: 0 8px 32px rgba(5, 62, 161, 0.28);
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08);
   --shadow-card-hover: 0 16px 48px rgba(0, 0, 0, 0.16);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -184,11 +184,11 @@ h4 { font-size: 18px; font-weight: 600; }
 .hero-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
 .hero-badge {
   display: inline-flex; align-items: center; gap: 8px;
-  background: rgba(255, 69, 0, 0.15);
+  background: rgba(5, 62, 161, 0.15);
   backdrop-filter: blur(8px);
-  color: #ffaa88;
+  color: #7eaaee;
   padding: 6px 14px; border-radius: 100px; font-size: 13px; font-weight: 600;
-  margin-bottom: 20px; border: 1px solid rgba(255, 69, 0, 0.35);
+  margin-bottom: 20px; border: 1px solid rgba(5, 62, 161, 0.35);
   font-family: var(--font-heading); letter-spacing: 0.3px;
 }
 .hero h1 { color: #fff; margin-bottom: 20px; }
@@ -213,11 +213,11 @@ h4 { font-size: 18px; font-weight: 600; }
 }
 .hero-card-icon { font-size: 36px; margin-bottom: 10px; }
 .hero-card-name { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.9); font-family: var(--font-heading); }
-.hero-card-price { font-size: 12px; color: #ffaa88; margin-top: 5px; }
+.hero-card-price { font-size: 12px; color: #7eaaee; margin-top: 5px; }
 .hero-stats { display: flex; gap: 32px; margin-top: 40px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.1); }
 .hero-stat strong {
   font-size: 30px; font-weight: 900; display: block;
-  background: linear-gradient(135deg, var(--primary-light), #ff8c00);
+  background: linear-gradient(135deg, var(--primary-light), #1a7cc4);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   background-clip: text;
   font-family: var(--font-heading);
@@ -388,7 +388,7 @@ h4 { font-size: 18px; font-weight: 600; }
 
 /* ── CTA Banner ── */
 .cta-banner {
-  background: linear-gradient(135deg, #FF2D00 0%, #FF4500 35%, #FF6B00 70%, #FF8C00 100%);
+  background: linear-gradient(135deg, #032d7a 0%, #053ea1 35%, #066aab 70%, #1a7cc4 100%);
   background-size: 200% 200%;
   animation: ctaGradient 10s ease infinite;
   color: #fff; text-align: center; padding: 88px 0;
