@@ -641,7 +641,8 @@
     }
 
     const subcategory = document.getElementById('subcategory')?.value?.trim() || 'produto';
-    const fakeProduct = { pricingType: type, startingPrice, subcategory };
+    const { optionPrices, fieldPriceModes: fpm } = collectOptionPrices();
+    const fakeProduct = { pricingType: type, startingPrice, subcategory, optionPrices, fieldPriceModes: fpm, options: collectOptions(type) };
     const hasArea = scenarios.some(s => s.sel.width);
 
     const rows = scenarios.map(sc => {

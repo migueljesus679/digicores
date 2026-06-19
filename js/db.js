@@ -162,12 +162,16 @@ const DigiDB = (() => {
     const modes  = product.fieldPriceModes || {};
     const opts   = product.options || {};
     let basePrice = product.startingPrice;
+    let baseSet = false;
     for (const [field, mode] of Object.entries(modes)) {
       if (mode !== 'absolute') continue;
       if (!prices[field]) continue;
       const selKey = field === 'quantities' ? 'quantity' : field === 'widths' ? 'width' : field === 'heights' ? 'height' : field;
       const selVal = String(selections[selKey] !== undefined ? selections[selKey] : selections[field] !== undefined ? selections[field] : (opts[field] ? opts[field][0] : ''));
-      if (prices[field][selVal] !== undefined) { basePrice = prices[field][selVal]; break; }
+      if (prices[field][selVal] !== undefined) {
+        if (!baseSet) { basePrice = prices[field][selVal]; baseSet = true; }
+        else { basePrice += prices[field][selVal]; }
+      }
     }
     let total = basePrice;
     for (const [field, mode] of Object.entries(modes)) {
