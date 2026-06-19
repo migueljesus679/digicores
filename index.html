@@ -240,18 +240,17 @@
   }
 
   // Categories Bar
-  function renderCategoriesBar() {
+  async function renderCategoriesBar(cats) {
     const bar = document.getElementById('categoriesBar');
-    const cats = DigiDB.getCategories();
     bar.innerHTML = `<a href="produtos.html" class="cat-pill">Todos</a>` +
       cats.map(c => `<a href="produtos.html?cat=${c.id}" class="cat-pill">${c.icon} ${c.name}</a>`).join('');
   }
 
   // Featured products
-  function renderFeatured() {
+  async function renderFeatured(products) {
     const grid = document.getElementById('featuredGrid');
-    const products = DigiDB.getProducts().filter(p => p.featured && p.active);
-    grid.innerHTML = products.map((p, i) => productCard(p, i)).join('');
+    const featured = products.filter(p => p.featured && p.active);
+    grid.innerHTML = featured.map((p, i) => productCard(p, i)).join('');
     if (typeof AOS !== 'undefined') AOS.refresh();
   }
 
@@ -273,10 +272,8 @@
   }
 
   // Categories Grid
-  function renderCategoriesGrid() {
+  async function renderCategoriesGrid(cats, allProducts) {
     const grid = document.getElementById('categoriesGrid');
-    const cats = DigiDB.getCategories();
-    const allProducts = DigiDB.getProducts();
     grid.innerHTML = cats.map((c, i) => {
       const count = allProducts.filter(p => p.category === c.id && p.active).length;
       return `
@@ -289,9 +286,9 @@
     if (typeof AOS !== 'undefined') AOS.refresh();
   }
 
+  let _cachedCats = [];
   function productCard(p, index = 0) {
-    const cats = DigiDB.getCategories();
-    const cat = cats.find(c => c.id === p.category);
+    const cat = _cachedCats.find(c => c.id === p.category);
     return `
       <div class="product-card" data-aos="fade-up" data-aos-delay="${index * 80}">
         <a href="produto.html?id=${p.id}" class="product-img">
@@ -317,10 +314,16 @@
 
   // Init
   updateCartCount();
-  renderCategoriesBar();
-  renderFeatured();
   renderHeroVisual();
-  renderCategoriesGrid();
+  (async () => {
+    try {
+      const [products, cats] = await Promise.all([DigiDB.getProducts(), DigiDB.getCategories()]);
+      _cachedCats = cats;
+      renderCategoriesBar(cats);
+      renderFeatured(products);
+      renderCategoriesGrid(cats, products);
+    } catch (err) { console.error('Erro ao carregar dados:', err); }
+  })();
 </script>
 
 <!-- AOS -->

@@ -199,28 +199,31 @@
   // ── Delete dialog ────────────────────────────────────────────────────────
   let pendingDelete = null; // { type: 'category'|'pricingType', id }
 
-  function openDeleteDialog(type, id, label) {
+  async function openDeleteDialog(type, id, label) {
     pendingDelete = { type, id };
     document.getElementById('deleteTitle').textContent = type === 'category' ? '🗑️ Eliminar Categoria' : '🗑️ Eliminar Tipo de Cálculo';
     document.getElementById('deleteMsg').innerHTML = `Tem a certeza que quer eliminar <strong>${esc(label)}</strong>? Esta ação não pode ser desfeita.`;
-
-    // Check for linked products
-    const allProducts = DigiDB.getProducts();
-    const linked = allProducts.filter(p =>
-      type === 'category' ? p.category === id : p.pricingType === id
-    );
-    const affectedEl = document.getElementById('deleteAffected');
-    const confirmBtn = document.querySelector('#deleteOverlay .btn-danger');
-    if (linked.length > 0) {
-      document.getElementById('deleteAffectedList').innerHTML = linked.map(p => `<li>${esc(p.name)}</li>`).join('');
-      affectedEl.style.display = '';
-      confirmBtn.textContent = 'Eliminar mesmo assim';
-    } else {
-      affectedEl.style.display = 'none';
-      confirmBtn.textContent = 'Eliminar';
-    }
-
+    document.getElementById('deleteAffected').style.display = 'none';
     document.getElementById('deleteOverlay').classList.add('open');
+
+    try {
+      const allProducts = await DigiDB.getProducts();
+      const linked = allProducts.filter(p =>
+        type === 'category' ? p.category === id : p.pricingType === id
+      );
+      const affectedEl = document.getElementById('deleteAffected');
+      const confirmBtn = document.querySelector('#deleteOverlay .btn-danger');
+      if (linked.length > 0) {
+        document.getElementById('deleteAffectedList').innerHTML = linked.map(p => `<li>${esc(p.name)}</li>`).join('');
+        affectedEl.style.display = '';
+        confirmBtn.textContent = 'Eliminar mesmo assim';
+      } else {
+        affectedEl.style.display = 'none';
+        confirmBtn.textContent = 'Eliminar';
+      }
+    } catch (err) {
+      // If we can't check linked products, still allow deletion
+    }
   }
 
   function closeDeleteDialog() {
@@ -228,17 +231,19 @@
     document.getElementById('deleteOverlay').classList.remove('open');
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return;
-    if (pendingDelete.type === 'category') {
-      DigiDB.deleteCategory(pendingDelete.id);
-      renderCategories();
-      showToast('Categoria eliminada.', 'success');
-    } else {
-      DigiDB.deletePricingType(pendingDelete.id);
-      renderPricingTypes();
-      showToast('Tipo de cálculo eliminado.', 'success');
-    }
+    try {
+      if (pendingDelete.type === 'category') {
+        await DigiDB.deleteCategory(pendingDelete.id);
+        await renderCategories();
+        showToast('Categoria eliminada.', 'success');
+      } else {
+        await DigiDB.deletePricingType(pendingDelete.id);
+        await renderPricingTypes();
+        showToast('Tipo de cálculo eliminado.', 'success');
+      }
+    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
     closeDeleteDialog();
   }
 
@@ -266,17 +271,19 @@
     else { document.getElementById('newCatName').value = ''; document.getElementById('newCatIcon').value = '🏷️'; }
   }
 
-  function createCategory() {
+  async function createCategory() {
     const nameEl = document.getElementById('newCatName');
     const iconEl = document.getElementById('newCatIcon');
     const name = nameEl.value.trim();
     if (!name) { nameEl.focus(); showToast('Introduza o nome da categoria.', 'error'); return; }
     const icon = iconEl.value.trim() || '🏷️';
     const id = slugify(name) + '_' + Date.now();
-    DigiDB.createCategory({ id, name, icon });
-    renderCategories();
-    toggleCategoryForm(false);
-    showToast(`Categoria "${name}" criada!`, 'success');
+    try {
+      await DigiDB.createCategory({ id, name, icon });
+      await renderCategories();
+      toggleCategoryForm(false);
+      showToast(`Categoria "${name}" criada!`, 'success');
+    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
   }
 
   function openCategoryEditRow(id) {
@@ -287,15 +294,17 @@
     if (form) { form.classList.add('open'); form.querySelector('input[data-field="name"]').focus(); }
   }
 
-  function saveCategoryEdit(id) {
+  async function saveCategoryEdit(id) {
     const row = document.getElementById(`cat-edit-${id}`);
     if (!row) return;
     const name = row.querySelector('input[data-field="name"]').value.trim();
     const icon = row.querySelector('input[data-field="icon"]').value.trim() || '🏷️';
     if (!name) { row.querySelector('input[data-field="name"]').focus(); showToast('Introduza o nome.', 'error'); return; }
-    DigiDB.updateCategory(id, { name, icon });
-    renderCategories();
-    showToast('Categoria atualizada.', 'success');
+    try {
+      await DigiDB.updateCategory(id, { name, icon });
+      await renderCategories();
+      showToast('Categoria atualizada.', 'success');
+    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
   }
 
   function cancelCategoryEdit(id) {
@@ -303,12 +312,9 @@
     if (tr) tr.querySelector('.row-edit-form')?.classList.remove('open');
   }
 
-  function renderCategories() {
-    // getCategories() already applies overrides and filters hidden defaults
-    const all = DigiDB.getCategories().map(c => ({
-      ...c,
-      isDefault: DEFAULT_CATEGORY_IDS.includes(c.id)
-    }));
+  async function renderCategories() {
+    const rawCats = await DigiDB.getCategories();
+    const all = rawCats.map(c => ({ ...c, isDefault: DEFAULT_CATEGORY_IDS.includes(c.id) }));
 
     const tbody = document.getElementById('categoriesTbody');
     if (all.length === 0) {
@@ -360,17 +366,19 @@
     else { document.getElementById('newPtName').value = ''; document.getElementById('newPtDesc').value = ''; }
   }
 
-  function createPricingType() {
+  async function createPricingType() {
     const nameEl = document.getElementById('newPtName');
     const descEl = document.getElementById('newPtDesc');
     const name = nameEl.value.trim();
     if (!name) { nameEl.focus(); showToast('Introduza o nome do tipo.', 'error'); return; }
     const desc = descEl.value.trim();
     const id = 'custom_' + slugify(name) + '_' + Date.now();
-    DigiDB.createPricingType({ id, name, desc });
-    renderPricingTypes();
-    togglePricingTypeForm(false);
-    showToast(`Tipo "${name}" criado!`, 'success');
+    try {
+      await DigiDB.createPricingType({ id, name, desc });
+      await renderPricingTypes();
+      togglePricingTypeForm(false);
+      showToast(`Tipo "${name}" criado!`, 'success');
+    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
   }
 
   function openPricingTypeEditRow(id) {
@@ -381,15 +389,17 @@
     if (form) { form.classList.add('open'); form.querySelector('input[data-field="name"]').focus(); }
   }
 
-  function savePricingTypeEdit(id) {
+  async function savePricingTypeEdit(id) {
     const row = document.getElementById(`pt-edit-${id}`);
     if (!row) return;
     const name = row.querySelector('input[data-field="name"]').value.trim();
     const desc = row.querySelector('input[data-field="desc"]').value.trim();
     if (!name) { row.querySelector('input[data-field="name"]').focus(); showToast('Introduza o nome.', 'error'); return; }
-    DigiDB.updatePricingType(id, { name, desc });
-    renderPricingTypes();
-    showToast('Tipo de cálculo atualizado.', 'success');
+    try {
+      await DigiDB.updatePricingType(id, { name, desc });
+      await renderPricingTypes();
+      showToast('Tipo de cálculo atualizado.', 'success');
+    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
   }
 
   function cancelPricingTypeEdit(id) {
@@ -397,11 +407,9 @@
     if (tr) tr.querySelector('.row-edit-form')?.classList.remove('open');
   }
 
-  function renderPricingTypes() {
-    // getDefaultPricingTypesList() applies overrides and filters hidden
-    const defaults = DigiDB.getDefaultPricingTypesList().map(t => ({ ...t, isDefault: true }));
-    const custom   = DigiDB.getPricingTypes().map(t => ({ ...t, isDefault: false }));
-    const all = [...defaults, ...custom];
+  async function renderPricingTypes() {
+    const allTypes = await DigiDB.getDefaultPricingTypesList();
+    const all = allTypes.map(t => ({ ...t, isDefault: DEFAULT_PRICING_TYPE_IDS.includes(t.id) }));
 
     const tbody = document.getElementById('pricingTypesTbody');
     if (all.length === 0) {
@@ -442,8 +450,10 @@
   }
 
   // ── Init ──────────────────────────────────────────────
-  renderCategories();
-  renderPricingTypes();
+  async function init() {
+    await Promise.all([renderCategories(), renderPricingTypes()]);
+  }
+  init().catch(err => showToast('Erro ao carregar: ' + err.message, 'error'));
 
   document.getElementById('deleteOverlay').addEventListener('click', function(e) {
     if (e.target === this) closeDeleteDialog();

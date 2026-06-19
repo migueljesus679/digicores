@@ -741,4 +741,72 @@ h4 { font-size: 18px; font-weight: 600; }
 .w-100 { width: 100%; } .d-none { display: none; }
 .loading { opacity: 0.5; pointer-events: none; }
 .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+
+/* ── Admin Improvements ── */
+.admin-filters {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; align-items: center;
+}
+.admin-filter-input {
+  flex: 1; min-width: 200px; padding: 9px 14px;
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  font-size: 14px; font-family: inherit; background: var(--white); color: var(--text);
+  transition: var(--transition);
+}
+.admin-filter-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(5,62,161,0.1); }
+.admin-filter-select {
+  padding: 9px 14px; border: 1.5px solid var(--border); border-radius: var(--radius);
+  font-size: 14px; font-family: inherit; background: var(--white); color: var(--text);
+  cursor: pointer; transition: var(--transition);
+}
+.admin-filter-select:focus { outline: none; border-color: var(--primary); }
+.admin-count-label { font-size: 13px; color: var(--text-muted); white-space: nowrap; padding: 0 4px; }
+
+.admin-welcome {
+  background: var(--primary-gradient); border-radius: var(--radius-lg); padding: 20px 24px;
+  color: #fff; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;
+}
+.admin-welcome-text h2 { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+.admin-welcome-text p { font-size: 13px; opacity: 0.75; }
+.admin-welcome-actions { display: flex; gap: 8px; }
+.admin-welcome-actions .btn { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.25); font-size: 13px; padding: 8px 16px; }
+.admin-welcome-actions .btn:hover { background: rgba(255,255,255,0.25); transform: none; box-shadow: none; }
+
+.admin-two-col { display: grid; grid-template-columns: 280px 1fr; gap: 24px; margin-bottom: 24px; }
+@media (max-width: 1024px) { .admin-two-col { grid-template-columns: 1fr; } }
+
+.cat-summary-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+}
+.cat-summary-row:last-child { border-bottom: none; }
+.cat-summary-name { display: flex; align-items: center; gap: 8px; }
+.cat-summary-count { font-size: 12px; color: var(--text-muted); background: var(--bg); padding: 2px 8px; border-radius: 20px; }
+
+.admin-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 12px; }
+
+.table-loading td, .table-empty td { text-align: center; padding: 48px 20px; color: var(--text-muted); font-size: 14px; }
+.table-loading td::before { content: ''; display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+
+.bulk-bar {
+  display: none; padding: 12px 20px; background: var(--bg); border-top: 1px solid var(--border);
+  align-items: center; gap: 12px;
+}
+.bulk-bar.visible { display: flex; }
+.bulk-count { font-size: 13px; font-weight: 600; color: var(--primary); }
+
+.toggle-switch {
+  position: relative; display: inline-block; width: 36px; height: 20px; cursor: pointer;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute; inset: 0; background: #ccc; border-radius: 20px; transition: 0.2s;
+}
+.toggle-track::before {
+  content: ''; position: absolute; width: 14px; height: 14px; background: #fff;
+  border-radius: 50%; left: 3px; top: 3px; transition: 0.2s;
+}
+.toggle-switch input:checked + .toggle-track { background: var(--primary); }
+.toggle-switch input:checked + .toggle-track::before { transform: translateX(16px); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
 @keyframes spin { to { transform: rotate(360deg); } }

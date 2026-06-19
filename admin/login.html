@@ -28,12 +28,6 @@
       </button>
     </form>
 
-    <div style="margin-top:24px;padding:16px;background:var(--bg);border-radius:var(--radius);font-size:13px;color:var(--text-muted);">
-      <strong>Demo:</strong><br>
-      Utilizador: <code style="background:#e9ecef;padding:2px 5px;border-radius:3px;">admin</code>
-      Senha: <code style="background:#e9ecef;padding:2px 5px;border-radius:3px;">digicores2024</code>
-    </div>
-
     <div style="margin-top:16px;text-align:center;">
       <a href="../index.html" style="font-size:13px;color:var(--text-muted);">← Voltar ao Site</a>
     </div>
@@ -48,7 +42,7 @@
     window.location.href = 'dashboard.html';
   }
 
-  function handleLogin(e) {
+  async function handleLogin(e) {
     e.preventDefault();
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
@@ -59,19 +53,18 @@
     btn.textContent = 'A autenticar...';
     btn.disabled = true;
 
-    setTimeout(() => {
-      const result = DigiAuth.login(username, password);
-      if (result.success) {
-        btn.textContent = '✅ Sucesso! A redirecionar...';
-        setTimeout(() => window.location.href = 'dashboard.html', 600);
-      } else {
-        errEl.classList.add('show');
-        btn.textContent = 'Entrar';
-        btn.disabled = false;
-        document.getElementById('password').value = '';
-        document.getElementById('password').focus();
-      }
-    }, 500);
+    const result = await DigiAuth.login(username, password);
+    if (result.success) {
+      btn.textContent = '✅ Sucesso! A redirecionar...';
+      setTimeout(() => window.location.href = 'dashboard.html', 600);
+    } else {
+      errEl.textContent = result.error || 'Credenciais inválidas. Tente novamente.';
+      errEl.classList.add('show');
+      btn.textContent = 'Entrar';
+      btn.disabled = false;
+      document.getElementById('password').value = '';
+      document.getElementById('password').focus();
+    }
   }
 </script>
 </body>

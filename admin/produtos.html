@@ -36,7 +36,7 @@
   <!-- MAIN -->
   <main class="admin-main">
     <div class="admin-topbar">
-      <div class="admin-page-title">Gerir Produtos</div>
+      <div class="admin-page-title">Produtos</div>
       <div class="admin-topbar-actions">
         <a href="produto-form.html" class="btn btn-primary btn-sm">+ Novo Produto</a>
       </div>
@@ -45,18 +45,18 @@
     <div class="admin-content">
 
       <!-- Filters -->
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px;align-items:center;">
-        <input type="search" id="searchInput" placeholder="Pesquisar produtos..." style="flex:1;min-width:200px;padding:9px 16px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;" />
-        <select id="categoryFilter" style="padding:9px 16px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;min-width:180px;">
+      <div class="admin-filters">
+        <input type="search" id="searchInput" placeholder="Pesquisar produtos..." class="admin-filter-input" />
+        <select id="categoryFilter" class="admin-filter-select">
           <option value="">Todas as Categorias</option>
         </select>
-        <select id="statusFilter" style="padding:9px 16px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;">
+        <select id="statusFilter" class="admin-filter-select">
           <option value="">Todos os Estados</option>
           <option value="active">Ativos</option>
           <option value="inactive">Inativos</option>
           <option value="featured">Em Destaque</option>
         </select>
-        <span id="countLabel" style="font-size:13px;color:var(--text-muted);white-space:nowrap;"></span>
+        <span id="countLabel" class="admin-count-label"></span>
       </div>
 
       <!-- Table -->
@@ -70,17 +70,19 @@
                 <th>Categoria</th>
                 <th>Tipo</th>
                 <th>Preço Base</th>
-                <th>Destaque</th>
-                <th>Estado</th>
-                <th>Ações</th>
+                <th style="width:80px;text-align:center;">Destaque</th>
+                <th style="width:100px;text-align:center;">Estado</th>
+                <th style="width:130px;">Ações</th>
               </tr>
             </thead>
-            <tbody id="productsTableBody"></tbody>
+            <tbody id="productsTableBody">
+              <tr class="table-loading"><td colspan="8">A carregar produtos...</td></tr>
+            </tbody>
           </table>
         </div>
-        <div id="bulkBar" style="display:none;padding:12px 16px;background:var(--bg);border-top:1px solid var(--border);display:none;align-items:center;gap:12px;">
-          <span id="selectedCount" style="font-size:13px;font-weight:600;"></span>
-          <button class="btn btn-danger btn-sm" onclick="bulkDelete()">🗑️ Eliminar Selecionados</button>
+        <div class="bulk-bar" id="bulkBar">
+          <span class="bulk-count" id="selectedCount"></span>
+          <button class="btn btn-danger btn-sm" onclick="bulkDelete()">Eliminar Selecionados</button>
           <button class="btn btn-ghost btn-sm" onclick="clearSelection()">Cancelar</button>
         </div>
       </div>
@@ -92,7 +94,7 @@
 <!-- Confirm Delete Dialog -->
 <div class="overlay" id="deleteOverlay">
   <div class="dialog">
-    <h3>🗑️ Eliminar Produto</h3>
+    <h3>Eliminar Produto</h3>
     <p>Tem a certeza que quer eliminar <strong id="deleteProductName"></strong>? Esta ação não pode ser desfeita.</p>
     <div class="dialog-actions">
       <button class="btn btn-ghost" onclick="closeDeleteDialog()">Cancelar</button>
@@ -106,12 +108,13 @@
 <script src="../js/db.js"></script>
 <script src="../js/auth.js"></script>
 <script>
-  if (!DigiAuth.requireAdminFromAdmin()) { /* redirected */ }
+  if (!DigiAuth.requireAdminFromAdmin()) {}
 
   const session = DigiAuth.getSession();
   if (session) document.getElementById('userName').textContent = session.name;
 
   let allProducts = [];
+  let allCategories = [];
   let filteredProducts = [];
   let deleteId = null;
   let selectedIds = new Set();
@@ -126,14 +129,13 @@
   }
 
   function initFilters() {
-    const cats = DigiDB.getCategories();
     const sel = document.getElementById('categoryFilter');
     sel.innerHTML = '<option value="">Todas as Categorias</option>' +
-      cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      allCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   }
 
   function getCategoryName(id) {
-    const c = DigiDB.getCategories().find(c => c.id === id);
+    const c = allCategories.find(c => c.id === id);
     return c ? `${c.icon} ${c.name}` : id;
   }
 
@@ -151,67 +153,70 @@
       return true;
     });
 
-    document.getElementById('countLabel').textContent = `${filteredProducts.length} produto${filteredProducts.length !== 1 ? 's' : ''}`;
+    const count = filteredProducts.length;
+    document.getElementById('countLabel').textContent = `${count} produto${count !== 1 ? 's' : ''}`;
 
     const tbody = document.getElementById('productsTableBody');
-    if (filteredProducts.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">Nenhum produto encontrado.</td></tr>`;
+    if (count === 0) {
+      tbody.innerHTML = `<tr class="table-empty"><td colspan="8">Nenhum produto encontrado.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = filteredProducts.map(p => `
-      <tr class="${selectedIds.has(p.id) ? 'selected' : ''}" style="${selectedIds.has(p.id) ? 'background:rgba(255,69,0,0.04);' : ''}">
+      <tr style="${selectedIds.has(p.id) ? 'background:rgba(5,62,161,0.04);' : ''}">
         <td><input type="checkbox" ${selectedIds.has(p.id) ? 'checked' : ''} onchange="toggleSelect('${p.id}', this)" /></td>
         <td>
           <div style="display:flex;align-items:center;gap:10px;">
             <img src="${p.image}" alt="${p.name}" class="product-thumb" onerror="this.src='https://placehold.co/48x36/f0f2f5/999?text=?'">
             <div>
               <div style="font-weight:600;font-size:14px;">${p.name}</div>
-              <div style="font-size:11px;color:var(--text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.description}</div>
+              <div style="font-size:11px;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.description}</div>
             </div>
           </div>
         </td>
         <td><span class="badge badge-info" style="font-size:11px;">${getCategoryName(p.category)}</span></td>
         <td><span class="badge badge-primary" style="font-size:11px;">${p.pricingType}</span></td>
-        <td>
-          <strong>€${p.startingPrice.toFixed(2)}</strong>
-          ${p.priceUnit ? `<span style="font-size:11px;color:var(--text-muted);"> ${p.priceUnit}</span>` : ''}
-        </td>
-        <td>
-          <button onclick="toggleFeatured('${p.id}')" style="background:none;border:none;cursor:pointer;font-size:18px;" title="${p.featured ? 'Remover destaque' : 'Adicionar destaque'}">
+        <td><strong>€${p.startingPrice.toFixed(2)}</strong>${p.priceUnit ? `<span style="font-size:11px;color:var(--text-muted);"> ${p.priceUnit}</span>` : ''}</td>
+        <td style="text-align:center;">
+          <button onclick="toggleFeatured('${p.id}')" style="background:none;border:none;cursor:pointer;font-size:20px;line-height:1;" title="${p.featured ? 'Remover destaque' : 'Adicionar destaque'}">
             ${p.featured ? '⭐' : '☆'}
           </button>
         </td>
-        <td>
-          <button onclick="toggleActive('${p.id}')" class="badge ${p.active ? 'badge-success' : 'badge-danger'}" style="cursor:pointer;border:none;" title="Clique para ${p.active ? 'desativar' : 'ativar'}">
-            ${p.active ? 'Ativo' : 'Inativo'}
-          </button>
+        <td style="text-align:center;">
+          <label class="toggle-switch" title="${p.active ? 'Clique para desativar' : 'Clique para ativar'}">
+            <input type="checkbox" ${p.active ? 'checked' : ''} onchange="toggleActive('${p.id}')">
+            <span class="toggle-track"></span>
+          </label>
         </td>
         <td>
           <div class="table-actions">
-            <a href="produto-form.html?id=${p.id}" class="action-btn action-btn-edit">✏️ Editar</a>
-            <a href="../produto.html?id=${p.id}" target="_blank" class="action-btn action-btn-view">👁 Ver</a>
-            <button class="action-btn action-btn-delete" onclick="openDeleteDialog('${p.id}', '${p.name.replace(/'/g, "\\'")}')">🗑️ Eliminar</button>
+            <a href="produto-form.html?id=${p.id}" class="action-btn action-btn-edit" title="Editar">✏️</a>
+            <a href="../produto.html?id=${p.id}" target="_blank" class="action-btn action-btn-view" title="Ver na loja">👁</a>
+            <button class="action-btn action-btn-delete" onclick="openDeleteDialog('${p.id}', '${p.name.replace(/'/g, "\\'")}')" title="Eliminar">🗑️</button>
           </div>
         </td>
       </tr>`).join('');
   }
 
-  function toggleActive(id) {
-    const p = DigiDB.getProduct(id);
+  async function toggleActive(id) {
+    const p = allProducts.find(x => x.id === id);
     if (!p) return;
-    DigiDB.updateProduct(id, { active: !p.active });
-    allProducts = DigiDB.getProducts();
-    renderTable();
-    showToast(`Produto ${p.active ? 'desativado' : 'ativado'}!`, 'success');
+    try {
+      await DigiDB.updateProduct(id, { active: !p.active });
+      p.active = !p.active;
+      renderTable();
+      showToast(`Produto ${p.active ? 'ativado' : 'desativado'}.`, 'success');
+    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
   }
 
-  function toggleFeatured(id) {
-    const p = DigiDB.getProduct(id);
+  async function toggleFeatured(id) {
+    const p = allProducts.find(x => x.id === id);
     if (!p) return;
-    DigiDB.updateProduct(id, { featured: !p.featured });
-    allProducts = DigiDB.getProducts();
-    renderTable();
+    try {
+      await DigiDB.updateProduct(id, { featured: !p.featured });
+      p.featured = !p.featured;
+      renderTable();
+    } catch (err) { showToast('Erro: ' + err.message, 'error'); }
   }
 
   function openDeleteDialog(id, name) {
@@ -225,14 +230,19 @@
     document.getElementById('deleteOverlay').classList.remove('open');
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!deleteId) return;
-    const p = DigiDB.getProduct(deleteId);
-    DigiDB.deleteProduct(deleteId);
-    allProducts = DigiDB.getProducts();
-    closeDeleteDialog();
-    renderTable();
-    showToast(`"${p?.name}" eliminado.`, 'success');
+    const p = allProducts.find(x => x.id === deleteId);
+    try {
+      await DigiDB.deleteProduct(deleteId);
+      allProducts = allProducts.filter(x => x.id !== deleteId);
+      closeDeleteDialog();
+      renderTable();
+      showToast(`"${p?.name}" eliminado.`, 'success');
+    } catch (err) {
+      closeDeleteDialog();
+      showToast('Erro ao eliminar: ' + err.message, 'error');
+    }
   }
 
   function toggleSelect(id, cb) {
@@ -253,41 +263,51 @@
     const bar = document.getElementById('bulkBar');
     const countEl = document.getElementById('selectedCount');
     if (selectedIds.size > 0) {
-      bar.style.display = 'flex';
+      bar.classList.add('visible');
       countEl.textContent = `${selectedIds.size} selecionado${selectedIds.size !== 1 ? 's' : ''}`;
     } else {
-      bar.style.display = 'none';
+      bar.classList.remove('visible');
     }
   }
 
   function clearSelection() {
     selectedIds.clear();
+    document.getElementById('selectAll').checked = false;
     updateBulkBar();
     renderTable();
   }
 
-  function bulkDelete() {
+  async function bulkDelete() {
     if (selectedIds.size === 0) return;
     const count = selectedIds.size;
     if (!confirm(`Eliminar ${count} produto${count !== 1 ? 's' : ''}? Esta ação não pode ser desfeita.`)) return;
-    selectedIds.forEach(id => DigiDB.deleteProduct(id));
-    selectedIds.clear();
-    allProducts = DigiDB.getProducts();
-    updateBulkBar();
-    renderTable();
-    showToast(`${count} produto${count !== 1 ? 's eliminados' : ' eliminado'}.`, 'success');
+    try {
+      await Promise.all([...selectedIds].map(id => DigiDB.deleteProduct(id)));
+      allProducts = allProducts.filter(p => !selectedIds.has(p.id));
+      selectedIds.clear();
+      updateBulkBar();
+      renderTable();
+      showToast(`${count} produto${count !== 1 ? 's eliminados' : ' eliminado'}.`, 'success');
+    } catch (err) { showToast('Erro ao eliminar: ' + err.message, 'error'); }
   }
 
-  // Init
-  allProducts = DigiDB.getProducts();
-  initFilters();
-  renderTable();
+  async function init() {
+    try {
+      [allProducts, allCategories] = await Promise.all([DigiDB.getProducts(), DigiDB.getCategories()]);
+      initFilters();
+      renderTable();
+    } catch (err) {
+      document.getElementById('productsTableBody').innerHTML = `<tr class="table-empty"><td colspan="8">Erro ao carregar: ${err.message}</td></tr>`;
+      showToast('Erro ao carregar produtos.', 'error');
+    }
+  }
+
+  init();
 
   document.getElementById('searchInput').addEventListener('input', renderTable);
   document.getElementById('categoryFilter').addEventListener('change', renderTable);
   document.getElementById('statusFilter').addEventListener('change', renderTable);
 
-  // Close dialog on overlay click
   document.getElementById('deleteOverlay').addEventListener('click', function(e) {
     if (e.target === this) closeDeleteDialog();
   });

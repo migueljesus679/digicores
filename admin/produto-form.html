@@ -435,42 +435,43 @@
     setTimeout(() => { t.classList.add('hiding'); setTimeout(() => t.remove(), 300); }, 3000);
   }
 
-  function initCategories() {
+  async function initCategories() {
     const sel = document.getElementById('category');
     const current = sel.value;
-    sel.innerHTML = '<option value="">Selecionar...</option>' +
-      DigiDB.getCategories().map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
-    if (current) sel.value = current;
+    try {
+      const cats = await DigiDB.getCategories();
+      sel.innerHTML = '<option value="">Selecionar...</option>' +
+        cats.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+      if (current) sel.value = current;
+    } catch (err) { showToast('Erro ao carregar categorias.', 'error'); }
   }
 
-  function initPricingTypes() {
+  async function initPricingTypes() {
     const sel = document.getElementById('pricingType');
     const current = sel.value;
-
-    // Rebuild entirely: defaults (respecting hidden/overrides) + custom
     sel.innerHTML = '<option value="">Selecionar...</option>';
+    try {
+      const all = await DigiDB.getDefaultPricingTypesList();
+      const defaults = all.filter(t => t.isDefault);
+      const customs = all.filter(t => !t.isDefault);
 
-    DigiDB.getDefaultPricingTypesList().forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t.id;
-      opt.textContent = t.desc ? `${t.name} (${t.desc})` : t.name;
-      sel.appendChild(opt);
-    });
-
-    const customs = DigiDB.getPricingTypes();
-    if (customs.length > 0) {
-      const group = document.createElement('optgroup');
-      group.label = 'Tipos Personalizados';
-      customs.forEach(t => {
+      defaults.forEach(t => {
         const opt = document.createElement('option');
-        opt.value = t.id;
-        opt.textContent = t.desc ? `${t.name} (${t.desc})` : t.name;
-        group.appendChild(opt);
+        opt.value = t.id; opt.textContent = t.desc ? `${t.name} (${t.desc})` : t.name;
+        sel.appendChild(opt);
       });
-      sel.appendChild(group);
-    }
-
-    if (current) sel.value = current;
+      if (customs.length > 0) {
+        const group = document.createElement('optgroup');
+        group.label = 'Tipos Personalizados';
+        customs.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id; opt.textContent = t.desc ? `${t.name} (${t.desc})` : t.name;
+          group.appendChild(opt);
+        });
+        sel.appendChild(group);
+      }
+      if (current) sel.value = current;
+    } catch (err) { showToast('Erro ao carregar tipos de cálculo.', 'error'); }
   }
 
   function showNewCategoryForm() {
@@ -484,7 +485,7 @@
     document.getElementById('newCategoryIcon').value = '🏷️';
   }
 
-  function saveNewCategory() {
+  async function saveNewCategory() {
     const nameEl = document.getElementById('newCategoryName');
     const iconEl = document.getElementById('newCategoryIcon');
     const name = nameEl.value.trim();
@@ -494,11 +495,13 @@
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
       .replace(/-+/g, '-').replace(/^-|-$/g, '') + '_' + Date.now();
-    DigiDB.createCategory({ id, name, icon });
-    initCategories();
-    document.getElementById('category').value = id;
-    hideNewCategoryForm();
-    showToast(`Categoria "${name}" criada!`, 'success');
+    try {
+      await DigiDB.createCategory({ id, name, icon });
+      await initCategories();
+      document.getElementById('category').value = id;
+      hideNewCategoryForm();
+      showToast(`Categoria "${name}" criada!`, 'success');
+    } catch (err) { showToast('Erro ao criar categoria: ' + err.message, 'error'); }
   }
 
   function showNewPricingTypeForm() {
@@ -512,7 +515,7 @@
     document.getElementById('newPricingTypeDesc').value = '';
   }
 
-  function saveNewPricingType() {
+  async function saveNewPricingType() {
     const nameEl = document.getElementById('newPricingTypeName');
     const descEl = document.getElementById('newPricingTypeDesc');
     const name = nameEl.value.trim();
@@ -522,12 +525,14 @@
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
       .replace(/-+/g, '-').replace(/^-|-$/g, '') + '_' + Date.now();
-    DigiDB.createPricingType({ id, name, desc });
-    initPricingTypes();
-    document.getElementById('pricingType').value = id;
-    hideNewPricingTypeForm();
-    onPricingTypeChange();
-    showToast(`Tipo "${name}" criado!`, 'success');
+    try {
+      await DigiDB.createPricingType({ id, name, desc });
+      await initPricingTypes();
+      document.getElementById('pricingType').value = id;
+      hideNewPricingTypeForm();
+      onPricingTypeChange();
+      showToast(`Tipo "${name}" criado!`, 'success');
+    } catch (err) { showToast('Erro ao criar tipo: ' + err.message, 'error'); }
   }
 
   function previewImage() {
@@ -536,14 +541,15 @@
     img.src = url || 'https://placehold.co/400x300/f0f2f5/999?text=Sem+Imagem';
   }
 
-  function onPricingTypeChange() {
+  async function onPricingTypeChange() {
     const type = document.getElementById('pricingType').value;
     const infoEl = document.getElementById('pricingTypeInfo');
     if (type && PRICING_TYPE_INFO[type]) {
       infoEl.textContent = PRICING_TYPE_INFO[type];
       infoEl.style.display = 'block';
     } else if (type && type.startsWith('custom_')) {
-      const custom = DigiDB.getPricingTypes().find(t => t.id === type);
+      const allPt = await DigiDB.getDefaultPricingTypesList().catch(() => []);
+      const custom = allPt.find(t => t.id === type);
       infoEl.textContent = custom && custom.desc
         ? `⚙️ Tipo personalizado: ${custom.desc}. Configure os campos de opções abaixo e defina os preços por valor.`
         : '⚙️ Tipo de cálculo personalizado. Configure os campos de opções abaixo e defina os preços por valor usando o motor de preços customizado.';
@@ -986,7 +992,7 @@
     return options;
   }
 
-  function saveProduct(e) {
+  async function saveProduct(e) {
     if (e) e.preventDefault();
 
     const name = document.getElementById('name').value.trim();
@@ -1005,19 +1011,11 @@
       return;
     }
 
-    const catName = category.replace(/-/g, ' ');
-    const image = imageVal || `https://placehold.co/600x400/FF4500/white?text=${encodeURIComponent(name)}`;
+    const image = imageVal || `https://placehold.co/600x400/053ea1/white?text=${encodeURIComponent(name)}`;
     const options = collectOptions(pricingType);
-
-    // Save custom field labels
     const optionLabels = {};
-    activeFields.forEach(field => {
-      if (customFieldLabels[field]) optionLabels[field] = customFieldLabels[field];
-    });
-
-    // Save custom pricing
+    activeFields.forEach(field => { if (customFieldLabels[field]) optionLabels[field] = customFieldLabels[field]; });
     const { optionPrices, fieldPriceModes: fieldPriceModesData } = collectOptionPrices();
-
     const data = { name, category, subcategory, description, pricingType, startingPrice, priceUnit, image, active, featured, options, optionLabels, optionPrices, fieldPriceModes: fieldPriceModesData };
 
     const saveBtn = document.getElementById('saveBtn');
@@ -1025,27 +1023,28 @@
     saveBtn.disabled = true;
     saveBtn.textContent = 'A guardar...';
 
-    setTimeout(() => {
+    try {
       if (editingId) {
-        DigiDB.updateProduct(editingId, data);
+        await DigiDB.updateProduct(editingId, data);
         status.textContent = '✅ Guardado com sucesso!';
         status.style.color = 'var(--success)';
         showToast('Produto atualizado com sucesso!', 'success');
       } else {
-        DigiDB.createProduct(data);
+        await DigiDB.createProduct(data);
         status.textContent = '✅ Produto criado com sucesso!';
         status.style.color = 'var(--success)';
         showToast('Produto criado com sucesso!', 'success');
       }
+      setTimeout(() => window.location.href = 'produtos.html', 1000);
+    } catch (err) {
+      showToast('Erro ao guardar: ' + err.message, 'error');
       saveBtn.disabled = false;
       saveBtn.textContent = '💾 Guardar';
-
-      setTimeout(() => window.location.href = 'produtos.html', 1200);
-    }, 400);
+    }
   }
 
-  function loadProduct(id) {
-    const p = DigiDB.getProduct(id);
+  async function loadProduct(id) {
+    const p = await DigiDB.getProduct(id);
     if (!p) {
       showToast('Produto não encontrado.', 'error');
       return;
@@ -1105,14 +1104,12 @@
   }
 
   // Init
-  initCategories();
-  initPricingTypes();
-
-  const params = new URLSearchParams(window.location.search);
-  const editId = params.get('id');
-  if (editId) {
-    loadProduct(editId);
-  }
+  (async () => {
+    await Promise.all([initCategories(), initPricingTypes()]);
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('id');
+    if (editId) await loadProduct(editId);
+  })();
 </script>
 </body>
 </html>

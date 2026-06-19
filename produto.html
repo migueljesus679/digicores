@@ -84,8 +84,9 @@
     document.getElementById('cartCount').textContent = DigiDB.getCart().length;
   }
 
+  let _categories = [];
   function getCategoryName(id) {
-    const c = DigiDB.getCategories().find(c => c.id === id);
+    const c = _categories.find(c => c.id === id);
     return c ? c.name : id;
   }
 
@@ -419,10 +420,9 @@
     updatePrice();
   }
 
-  function renderRelated(p) {
-    const related = DigiDB.getProducts()
-      .filter(r => r.active && r.id !== p.id && r.category === p.category)
-      .slice(0, 4);
+  async function renderRelated(p) {
+    const allProds = await DigiDB.getProducts().catch(() => []);
+    const related = allProds.filter(r => r.active && r.id !== p.id && r.category === p.category).slice(0, 4);
     document.getElementById('relatedGrid').innerHTML = related.map(r => `
       <div class="product-card">
         <a href="produto.html?id=${r.id}" class="product-img">
@@ -446,20 +446,33 @@
   if (!productId) {
     window.location.href = 'produtos.html';
   } else {
-    const product = DigiDB.getProduct(productId);
-    if (!product) {
-      document.getElementById('productContent').innerHTML = `
-        <div class="cart-empty">
-          <div class="icon">😕</div>
-          <h2>Produto não encontrado</h2>
-          <p>O produto que procura não existe ou foi removido.</p>
-          <a href="produtos.html" class="btn btn-primary">Ver Todos os Produtos</a>
-        </div>`;
-    } else {
-      currentProduct = product;
-      renderProduct(product);
-      renderRelated(product);
-    }
+    (async () => {
+      try {
+        [_categories] = await Promise.all([DigiDB.getCategories()]);
+        const product = await DigiDB.getProduct(productId);
+        if (!product) {
+          document.getElementById('productContent').innerHTML = `
+            <div class="cart-empty">
+              <div class="icon">😕</div>
+              <h2>Produto não encontrado</h2>
+              <p>O produto que procura não existe ou foi removido.</p>
+              <a href="produtos.html" class="btn btn-primary">Ver Todos os Produtos</a>
+            </div>`;
+        } else {
+          currentProduct = product;
+          renderProduct(product);
+          renderRelated(product);
+        }
+      } catch (err) {
+        document.getElementById('productContent').innerHTML = `
+          <div class="cart-empty">
+            <div class="icon">😕</div>
+            <h2>Erro ao carregar produto</h2>
+            <p>Verifique a ligação ao servidor.</p>
+            <a href="produtos.html" class="btn btn-primary">Ver Todos os Produtos</a>
+          </div>`;
+      }
+    })();
   }
 </script>
 </body>

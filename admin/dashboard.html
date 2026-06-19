@@ -17,28 +17,14 @@
     </div>
     <nav class="sidebar-nav">
       <div class="sidebar-section">Menu</div>
-      <a href="dashboard.html" class="active">
-        <span class="nav-icon">📊</span><span>Dashboard</span>
-      </a>
-      <a href="produtos.html">
-        <span class="nav-icon">📦</span><span>Produtos</span>
-      </a>
-      <a href="produto-form.html">
-        <span class="nav-icon">➕</span><span>Novo Produto</span>
-      </a>
-      <a href="emails.html">
-        <span class="nav-icon">📧</span><span>Emails</span>
-      </a>
-      <a href="configuracoes.html">
-        <span class="nav-icon">⚙️</span><span>Configurações</span>
-      </a>
+      <a href="dashboard.html" class="active"><span class="nav-icon">📊</span><span>Dashboard</span></a>
+      <a href="produtos.html"><span class="nav-icon">📦</span><span>Produtos</span></a>
+      <a href="produto-form.html"><span class="nav-icon">➕</span><span>Novo Produto</span></a>
+      <a href="emails.html"><span class="nav-icon">📧</span><span>Emails</span></a>
+      <a href="configuracoes.html"><span class="nav-icon">⚙️</span><span>Configurações</span></a>
       <div class="sidebar-section">Loja</div>
-      <a href="../index.html" target="_blank">
-        <span class="nav-icon">🌐</span><span>Ver Loja</span>
-      </a>
-      <a href="../produtos.html" target="_blank">
-        <span class="nav-icon">🛍️</span><span>Ver Produtos</span>
-      </a>
+      <a href="../index.html" target="_blank"><span class="nav-icon">🌐</span><span>Ver Loja</span></a>
+      <a href="../produtos.html" target="_blank"><span class="nav-icon">🛍️</span><span>Ver Produtos</span></a>
     </nav>
     <div class="sidebar-user">
       <div class="sidebar-user-info" id="userName">Administrador</div>
@@ -58,49 +44,71 @@
 
     <div class="admin-content">
 
-      <!-- Stats -->
-      <div class="stats-grid" id="statsGrid"></div>
-
-      <!-- Quick actions -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:32px;">
-        <div class="admin-card" style="padding:24px;">
-          <h4 style="margin-bottom:16px;">⚡ Ações Rápidas</h4>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <a href="produto-form.html" class="btn btn-primary">➕ Criar Novo Produto</a>
-            <a href="produtos.html" class="btn btn-ghost">📦 Gerir Produtos</a>
-            <a href="configuracoes.html" class="btn btn-ghost">⚙️ Configurações</a>
-            <a href="emails.html" class="btn btn-ghost">📧 Gerir Emails</a>
-            <a href="../index.html" target="_blank" class="btn btn-ghost">🌐 Ver Loja ao Vivo</a>
-            <button class="btn btn-ghost" onclick="resetData()" style="color:var(--danger);">🔄 Repor Dados de Demonstração</button>
-          </div>
+      <!-- Welcome -->
+      <div class="admin-welcome">
+        <div class="admin-welcome-text">
+          <h2>Bem-vindo, <span id="welcomeName">Administrador</span></h2>
+          <p id="welcomeDate"></p>
         </div>
-        <div class="admin-card" style="padding:24px;">
-          <h4 style="margin-bottom:16px;">📂 Categorias</h4>
-          <div id="categoriesList"></div>
+        <div class="admin-welcome-actions">
+          <a href="produto-form.html" class="btn">+ Produto</a>
+          <a href="../index.html" target="_blank" class="btn">Ver Loja →</a>
         </div>
       </div>
 
-      <!-- Recent products -->
-      <div class="admin-card">
-        <div class="admin-card-header">
-          <h3>Produtos Recentes</h3>
-          <a href="produtos.html" class="btn btn-ghost btn-sm">Ver Todos →</a>
+      <!-- Stats -->
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><div class="stat-card-top"><div><div class="stat-card-value">—</div><div class="stat-card-label">Total de Produtos</div></div><div class="stat-card-icon orange">📦</div></div></div>
+        <div class="stat-card"><div class="stat-card-top"><div><div class="stat-card-value">—</div><div class="stat-card-label">Produtos Ativos</div></div><div class="stat-card-icon green">✅</div></div></div>
+        <div class="stat-card"><div class="stat-card-top"><div><div class="stat-card-value">—</div><div class="stat-card-label">Em Destaque</div></div><div class="stat-card-icon blue">⭐</div></div></div>
+        <div class="stat-card"><div class="stat-card-top"><div><div class="stat-card-value">—</div><div class="stat-card-label">Categorias</div></div><div class="stat-card-icon purple">🗂️</div></div></div>
+      </div>
+
+      <!-- Two-column layout -->
+      <div class="admin-two-col">
+
+        <!-- Categories summary -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>Categorias</h3>
+            <a href="configuracoes.html" class="btn btn-ghost btn-sm">Gerir →</a>
+          </div>
+          <div style="padding:4px 24px 16px;" id="categoriesList">
+            <p style="color:var(--text-muted);font-size:13px;padding:16px 0;">A carregar...</p>
+          </div>
         </div>
-        <div style="overflow-x:auto;">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Produto</th>
-                <th>Categoria</th>
-                <th>Tipo Preço</th>
-                <th>Preço Base</th>
-                <th>Estado</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody id="recentProductsBody"></tbody>
-          </table>
+
+        <!-- Recent products -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>Produtos Recentes</h3>
+            <a href="produtos.html" class="btn btn-ghost btn-sm">Ver Todos →</a>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th>Categoria</th>
+                  <th>Preço Base</th>
+                  <th>Estado</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="recentProductsBody">
+                <tr class="table-loading"><td colspan="5">A carregar produtos...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
+
+      </div>
+
+      <!-- Reset -->
+      <div style="text-align:right;">
+        <button class="btn btn-ghost btn-sm" onclick="resetData()" style="color:var(--danger);border-color:rgba(220,53,69,0.3);">
+          🔄 Repor Dados de Demonstração
+        </button>
       </div>
 
     </div>
@@ -112,11 +120,17 @@
 <script src="../js/db.js"></script>
 <script src="../js/auth.js"></script>
 <script>
-  // Auth guard
-  if (!DigiAuth.requireAdminFromAdmin()) { /* redirected */ }
+  if (!DigiAuth.requireAdminFromAdmin()) {}
 
   const session = DigiAuth.getSession();
-  if (session) document.getElementById('userName').textContent = session.name;
+  if (session) {
+    document.getElementById('userName').textContent = session.name;
+    document.getElementById('welcomeName').textContent = session.name;
+  }
+
+  const now = new Date();
+  document.getElementById('welcomeDate').textContent =
+    now.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   function showToast(msg, type = '') {
     const tc = document.getElementById('toastContainer');
@@ -127,57 +141,31 @@
     setTimeout(() => { t.classList.add('hiding'); setTimeout(() => t.remove(), 300); }, 3000);
   }
 
-  function renderStats() {
-    const products = DigiDB.getProducts();
+  function renderStats(products, cats) {
     const active = products.filter(p => p.active).length;
     const featured = products.filter(p => p.featured).length;
-    const cats = new Set(products.map(p => p.category)).size;
-
     document.getElementById('statsGrid').innerHTML = `
-      <div class="stat-card">
-        <div class="stat-card-top">
-          <div><div class="stat-card-value">${products.length}</div><div class="stat-card-label">Total de Produtos</div></div>
-          <div class="stat-card-icon orange">📦</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-top">
-          <div><div class="stat-card-value">${active}</div><div class="stat-card-label">Produtos Ativos</div></div>
-          <div class="stat-card-icon green">✅</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-top">
-          <div><div class="stat-card-value">${featured}</div><div class="stat-card-label">Em Destaque</div></div>
-          <div class="stat-card-icon blue">⭐</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card-top">
-          <div><div class="stat-card-value">${cats}</div><div class="stat-card-label">Categorias</div></div>
-          <div class="stat-card-icon purple">🗂️</div>
-        </div>
-      </div>`;
+      <div class="stat-card"><div class="stat-card-top"><div><div class="stat-card-value">${products.length}</div><div class="stat-card-label">Total de Produtos</div></div><div class="stat-card-icon orange">📦</div></div></div>
+      <div class="stat-card"><div class="stat-card-top"><div><div class="stat-card-value">${active}</div><div class="stat-card-label">Produtos Ativos</div></div><div class="stat-card-icon green">✅</div></div></div>
+      <div class="stat-card"><div class="stat-card-top"><div><div class="stat-card-value">${featured}</div><div class="stat-card-label">Em Destaque</div></div><div class="stat-card-icon blue">⭐</div></div></div>
+      <div class="stat-card"><div class="stat-card-top"><div><div class="stat-card-value">${cats.length}</div><div class="stat-card-label">Categorias</div></div><div class="stat-card-icon purple">🗂️</div></div></div>`;
   }
 
-  function renderCategories() {
-    const products = DigiDB.getProducts();
-    const cats = DigiDB.getCategories();
+  function renderCategories(products, cats) {
     document.getElementById('categoriesList').innerHTML = cats.map(c => {
       const count = products.filter(p => p.category === c.id).length;
       const active = products.filter(p => p.category === c.id && p.active).length;
       return `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
-          <span style="font-size:14px;">${c.icon} ${c.name}</span>
-          <span style="font-size:12px;color:var(--text-muted);">${active}/${count} ativos</span>
+        <div class="cat-summary-row">
+          <div class="cat-summary-name">${c.icon} <span>${c.name}</span></div>
+          <span class="cat-summary-count">${active}/${count}</span>
         </div>`;
-    }).join('');
+    }).join('') || '<p style="color:var(--text-muted);font-size:13px;padding:8px 0;">Sem categorias.</p>';
   }
 
-  function renderRecentProducts() {
-    const products = DigiDB.getProducts().slice(-8).reverse();
-    const cats = DigiDB.getCategories();
-    document.getElementById('recentProductsBody').innerHTML = products.map(p => {
+  function renderRecentProducts(products, cats) {
+    const recent = [...products].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 8);
+    document.getElementById('recentProductsBody').innerHTML = recent.map(p => {
       const cat = cats.find(c => c.id === p.category);
       return `
         <tr>
@@ -186,12 +174,11 @@
               <img src="${p.image}" alt="${p.name}" class="product-thumb" onerror="this.src='https://placehold.co/48x36/f0f2f5/999?text=?'">
               <div>
                 <div style="font-weight:600;font-size:14px;">${p.name}</div>
-                <div style="font-size:11px;color:var(--text-muted);">${p.featured ? '⭐ Destaque' : ''}</div>
+                ${p.featured ? '<div style="font-size:11px;color:var(--primary);">⭐ Destaque</div>' : ''}
               </div>
             </div>
           </td>
           <td><span class="badge badge-info">${cat ? cat.name : p.category}</span></td>
-          <td><span class="badge badge-primary">${p.pricingType}</span></td>
           <td><strong>€${p.startingPrice.toFixed(2)}</strong>${p.priceUnit ? ` <span style="font-size:11px;color:var(--text-muted);">${p.priceUnit}</span>` : ''}</td>
           <td><span class="badge ${p.active ? 'badge-success' : 'badge-danger'}">${p.active ? 'Ativo' : 'Inativo'}</span></td>
           <td>
@@ -201,22 +188,32 @@
             </div>
           </td>
         </tr>`;
-    }).join('');
+    }).join('') || '<tr class="table-empty"><td colspan="5">Nenhum produto encontrado.</td></tr>';
   }
 
-  function resetData() {
-    if (confirm('Repor todos os dados de demonstração? Isto irá apagar produtos personalizados.')) {
-      DigiDB.resetToSeed();
-      renderStats();
-      renderRecentProducts();
+  async function resetData() {
+    if (!confirm('Repor todos os dados de demonstração? Isto irá substituir os produtos actuais.')) return;
+    try {
+      await DigiDB.resetToSeed();
+      await init();
       showToast('Dados repostos com sucesso!', 'success');
+    } catch (err) {
+      showToast('Erro ao repor dados: ' + err.message, 'error');
     }
   }
 
-  // Init
-  renderStats();
-  renderCategories();
-  renderRecentProducts();
+  async function init() {
+    try {
+      const [products, cats] = await Promise.all([DigiDB.getProducts(), DigiDB.getCategories()]);
+      renderStats(products, cats);
+      renderCategories(products, cats);
+      renderRecentProducts(products, cats);
+    } catch (err) {
+      showToast('Erro ao carregar dados: ' + err.message, 'error');
+    }
+  }
+
+  init();
 </script>
 </body>
 </html>
