@@ -199,7 +199,7 @@
             </div>
 
             <!-- Simulador de Preço -->
-            <div class="admin-card" style="padding:24px;" id="priceSimulatorCard" style="display:none;">
+            <div class="admin-card" style="padding:24px;display:none;" id="priceSimulatorCard">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
                 <span style="font-weight:700;font-size:14px;">📊 Simulação de Preços</span>
                 <span style="font-size:11px;color:var(--text-muted);background:var(--bg-2);padding:2px 8px;border-radius:20px;">Actualiza em tempo real</span>
@@ -968,14 +968,11 @@
     const mode = fieldPriceModes[field] || 'none';
 
     if (mode !== 'none') {
-      // Tags-only wrap; the add row (with inputs) stays outside
       wrap.innerHTML = tagsHtml;
-      // Re-attach events for the add row inputs (they survived the innerHTML update)
       attachTagInputEvents(field);
       const inp = document.getElementById(`tag_input_${field}`);
       if (inp) inp.focus();
     } else {
-      // Simple mode: tags + inline input inside the wrap
       const inputEl = document.createElement('input');
       inputEl.className = 'tag-input';
       inputEl.id = `tag_input_${field}`;
@@ -985,6 +982,7 @@
       attachTagInputEvents(field);
       inputEl.focus();
     }
+    updateSimulator();
   }
 
   function removeField(field) {
