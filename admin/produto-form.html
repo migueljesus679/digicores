@@ -180,7 +180,6 @@
                       <button type="button" class="btn btn-ghost btn-sm" onclick="hideNewPricingTypeForm()">Cancelar</button>
                     </div>
                   </div>
-                  <div id="pricingTypeInfo" class="pricing-type-info" style="display:none;"></div>
                 </div>
                 <div class="form-group">
                   <label>Preço Base / A partir de (€) *</label>
@@ -188,30 +187,24 @@
                 </div>
               </div>
 
-              <div class="form-group">
-                <label>Unidade de Preço (opcional)</label>
-                <input type="text" id="priceUnit" placeholder="Ex: €/m²" />
-                <div class="hint">Aparece junto ao preço na loja. Deixe em branco se não aplicável.</div>
-              </div>
-
-              <!-- Simulador de Preço -->
-              <div id="priceSimulator" style="display:none;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                  <span style="font-weight:700;font-size:14px;">📊 Simulação de Preços</span>
-                  <span style="font-size:11px;color:var(--text-muted);background:var(--bg-2);padding:2px 8px;border-radius:20px;">Actualiza em tempo real</span>
-                </div>
-                <div id="simContent"></div>
-              </div>
-
             </div>
 
             <!-- Options Card -->
             <div class="admin-card" style="padding:24px;" id="optionsCard">
               <h4 style="margin-bottom:4px;">⚙️ Opções do Produto</h4>
-              <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Configure as opções disponíveis para este produto. Escreva cada valor e prima Enter para adicionar.</p>
+              <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Campos obrigatórios para este produto. Adicione opções extra se necessário.</p>
               <div id="optionsBuilder">
                 <p style="color:var(--text-muted);font-size:14px;">Selecione primeiro o Tipo de Cálculo de Preço para configurar as opções.</p>
               </div>
+            </div>
+
+            <!-- Simulador de Preço -->
+            <div class="admin-card" style="padding:24px;" id="priceSimulatorCard" style="display:none;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                <span style="font-weight:700;font-size:14px;">📊 Simulação de Preços</span>
+                <span style="font-size:11px;color:var(--text-muted);background:var(--bg-2);padding:2px 8px;border-radius:20px;">Actualiza em tempo real</span>
+              </div>
+              <div id="simContent"></div>
             </div>
 
           </div>
@@ -386,10 +379,33 @@
     'autocolante': ['quantities', 'sizes', 'materials', 'finishes'],
     'etiqueta': ['quantities', 'sizes', 'shapes', 'materials'],
     'brinde-unidade': ['quantities', 'models', 'colors', 'printAreas'],
-    'rollup': ['sizes', 'materials', 'quantities'],
-    'expositor': ['sizes', 'accessories', 'quantities'],
+    'rollup': ['quantities', 'sizes', 'materials'],
+    'expositor': ['quantities', 'sizes', 'accessories'],
     'area': ['widths', 'heights', 'finishes', 'thicknesses'],
-    'textil': ['quantities', 'sizes', 'printTypes', 'printTechniques', 'fabrics']
+    'textil': ['quantities', 'sizes', 'printTechniques', 'printTypes', 'fabrics']
+  };
+
+  const MINIMUM_FIELDS = {
+    'flyer':          ['quantities', 'sizes'],
+    'cartao':         ['quantities', 'finishes'],
+    'folheto':        ['quantities', 'sizes'],
+    'envelope':       ['quantities', 'sizes'],
+    'autocolante':    ['quantities', 'sizes'],
+    'etiqueta':       ['quantities', 'sizes'],
+    'brinde-unidade': ['quantities'],
+    'rollup':         ['quantities', 'sizes'],
+    'expositor':      ['quantities', 'sizes'],
+    'area':           ['widths', 'heights'],
+    'textil':         ['quantities', 'sizes'],
+  };
+
+  const FIELD_SEL_KEY = {
+    quantities: 'quantity', sizes: 'size', papers: 'paper', sides: 'sides',
+    finishes: 'finish', corners: 'corners', folds: 'fold', windows: 'window',
+    materials: 'material', shapes: 'shape', models: 'model', colors: 'color',
+    printAreas: 'printAreas', accessories: 'accessories', widths: 'width',
+    heights: 'height', thicknesses: 'thickness', printTypes: 'printType',
+    printTechniques: 'technique', fabrics: 'fabric'
   };
 
   const OPTIONS_LABELS = {
@@ -457,7 +473,7 @@
 
       defaults.forEach(t => {
         const opt = document.createElement('option');
-        opt.value = t.id; opt.textContent = t.desc ? `${t.name} (${t.desc})` : t.name;
+        opt.value = t.id; opt.textContent = t.name;
         sel.appendChild(opt);
       });
       if (customs.length > 0) {
@@ -465,7 +481,7 @@
         group.label = 'Tipos Personalizados';
         customs.forEach(t => {
           const opt = document.createElement('option');
-          opt.value = t.id; opt.textContent = t.desc ? `${t.name} (${t.desc})` : t.name;
+          opt.value = t.id; opt.textContent = t.name;
           group.appendChild(opt);
         });
         sel.appendChild(group);
@@ -541,24 +557,10 @@
     img.src = url || 'https://placehold.co/400x300/f0f2f5/999?text=Sem+Imagem';
   }
 
-  async function onPricingTypeChange() {
+  function onPricingTypeChange() {
     const type = document.getElementById('pricingType').value;
-    const infoEl = document.getElementById('pricingTypeInfo');
-    if (type && PRICING_TYPE_INFO[type]) {
-      infoEl.textContent = PRICING_TYPE_INFO[type];
-      infoEl.style.display = 'block';
-    } else if (type && type.startsWith('custom_')) {
-      const allPt = await DigiDB.getDefaultPricingTypesList().catch(() => []);
-      const custom = allPt.find(t => t.id === type);
-      infoEl.textContent = custom && custom.desc
-        ? `⚙️ Tipo personalizado: ${custom.desc}. Configure os campos de opções abaixo e defina os preços por valor.`
-        : '⚙️ Tipo de cálculo personalizado. Configure os campos de opções abaixo e defina os preços por valor usando o motor de preços customizado.';
-      infoEl.style.display = 'block';
-    } else {
-      infoEl.style.display = 'none';
-    }
-    // Reset to default fields for this type (fresh start)
-    activeFields = [...(OPTIONS_BY_TYPE[type] || [])];
+    // Start with only the minimum required fields for this type
+    activeFields = [...(MINIMUM_FIELDS[type] || OPTIONS_BY_TYPE[type]?.slice(0, 2) || [])];
     customFieldLabels = {};
     tagInputsState = {};
     tagPricesState = {};
@@ -568,57 +570,101 @@
     updateSimulator();
   }
 
+  function generateScenarios(type) {
+    const minFields = MINIMUM_FIELDS[type] || activeFields.slice(0, 2);
+    // Check all minimum fields have at least one value
+    if (!minFields.every(f => (tagInputsState[f] || []).length > 0)) return [];
+
+    const primaryField = minFields[0];
+    const secondaryField = minFields[1] || null;
+    const primaryVals  = (tagInputsState[primaryField] || []).slice(0, 5);
+    const secondaryVals = secondaryField ? (tagInputsState[secondaryField] || []).slice(0, 3) : [null];
+
+    const scenarios = [];
+    for (const pVal of primaryVals) {
+      for (const sVal of secondaryVals) {
+        const sel = {};
+        const labelParts = [];
+
+        const pKey = FIELD_SEL_KEY[primaryField] || primaryField;
+        sel[pKey] = isNaN(pVal) ? pVal : Number(pVal);
+        labelParts.push(primaryField === 'quantities' ? `${pVal} un.` : pVal);
+
+        if (sVal !== null) {
+          const sKey = FIELD_SEL_KEY[secondaryField] || secondaryField;
+          sel[sKey] = isNaN(sVal) ? sVal : Number(sVal);
+          labelParts.push(sVal);
+        }
+
+        // Add first value of any other active fields
+        activeFields.forEach(f => {
+          if (f === primaryField || f === secondaryField) return;
+          const vals = tagInputsState[f] || [];
+          if (vals.length > 0) {
+            const key = FIELD_SEL_KEY[f] || f;
+            sel[key] = isNaN(vals[0]) ? vals[0] : Number(vals[0]);
+            labelParts.push(vals[0]);
+          }
+        });
+
+        scenarios.push({ label: labelParts.join(' · '), sel });
+        if (scenarios.length >= 6) return scenarios;
+      }
+    }
+    return scenarios;
+  }
+
   function updateSimulator() {
     const type = document.getElementById('pricingType').value;
     const startingPrice = parseFloat(document.getElementById('startingPrice').value);
-    const simDiv = document.getElementById('priceSimulator');
+    const card = document.getElementById('priceSimulatorCard');
     const simContent = document.getElementById('simContent');
 
-    if (!type || !startingPrice || startingPrice <= 0 || !SIMULATOR_EXAMPLES[type]) {
-      simDiv.style.display = 'none';
+    if (!type || !startingPrice || startingPrice <= 0) {
+      card.style.display = 'none';
       return;
     }
 
-    const examples = SIMULATOR_EXAMPLES[type];
-    const subcategory = document.getElementById('subcategory').value.trim() || 'tshirt';
+    const scenarios = generateScenarios(type);
+    if (!scenarios.length) {
+      card.style.display = 'none';
+      return;
+    }
+
+    const subcategory = document.getElementById('subcategory')?.value?.trim() || 'produto';
     const fakeProduct = { pricingType: type, startingPrice, subcategory };
+    const hasArea = scenarios.some(s => s.sel.width);
 
-    const hasQty = examples.some(e => e.sel.quantity);
-    const hasArea = examples.some(e => e.sel.width);
-
-    const rows = examples.map(ex => {
-      const net   = DigiDB.calculatePrice(fakeProduct, ex.sel);
+    const rows = scenarios.map(sc => {
+      const net   = DigiDB.calculatePrice(fakeProduct, sc.sel);
       const iva   = Math.round(net * 0.23 * 100) / 100;
       const gross = Math.round((net + iva) * 100) / 100;
 
       let unitCell = '<td class="sim-unit">—</td>';
-      if (ex.sel.quantity) {
-        const u = net / ex.sel.quantity;
+      if (sc.sel.quantity) {
+        const u = net / sc.sel.quantity;
         unitCell = `<td class="sim-unit">€${u < 0.1 ? u.toFixed(4) : u.toFixed(3)}/un.</td>`;
-      } else if (ex.sel.width && ex.sel.height) {
-        const area = ex.sel.width * ex.sel.height;
+      } else if (sc.sel.width && sc.sel.height) {
+        const area = sc.sel.width * sc.sel.height;
         unitCell = `<td class="sim-unit">€${(net / area).toFixed(2)}/m²</td>`;
       }
 
       return `<tr>
-        <td>${ex.label}</td>
-        <td style="text-align:right">€${net.toFixed(2)}</td>
-        <td style="text-align:right;color:var(--text-muted)">€${iva.toFixed(2)}</td>
+        <td>${sc.label}</td>
         <td class="sim-gross">€${gross.toFixed(2)}</td>
+        <td style="text-align:right;color:var(--text-muted);font-size:11px">s/IVA: €${net.toFixed(2)}</td>
         ${unitCell}
       </tr>`;
     }).join('');
 
     simContent.innerHTML = `
-      <div class="sim-formula">📐 Fórmula: ${SIM_FORMULA[type] || '—'}</div>
       <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);">
         <table class="sim-table">
           <thead>
             <tr>
               <th>Cenário</th>
+              <th style="text-align:right;color:var(--primary)">Preço c/IVA</th>
               <th style="text-align:right">s/IVA</th>
-              <th style="text-align:right">IVA 23%</th>
-              <th style="text-align:right;color:var(--primary)">c/IVA</th>
               <th style="text-align:right">${hasArea ? 'Por m²' : 'Por un.'}</th>
             </tr>
           </thead>
@@ -626,10 +672,10 @@
         </table>
       </div>
       <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">
-        ⚡ Valores simulados com Preço Base = <strong>€${startingPrice.toFixed(2)}</strong>. Altere o valor acima para ver como os preços escalam.
+        Preços com IVA 23% incluído. Preço Base = <strong>€${startingPrice.toFixed(2)}</strong>.
       </p>`;
 
-    simDiv.style.display = 'block';
+    card.style.display = 'block';
   }
 
   function buildOptionsEditor(type) {
@@ -639,7 +685,6 @@
       return;
     }
 
-    // Build each active field
     const fieldsHtml = activeFields.map(field => {
       const label = OPTIONS_LABELS[field] || customFieldLabels[field] || field;
       if (!tagInputsState[field]) {
@@ -648,13 +693,20 @@
       return buildTagInput(field, label, tagInputsState[field]);
     }).join('');
 
+    // Standard optional fields not yet active
+    const allStandard = OPTIONS_BY_TYPE[type] || [];
+    const availableStd = allStandard.filter(f => !activeFields.includes(f));
+    const stdChips = availableStd.map(f =>
+      `<button type="button" class="btn btn-ghost btn-sm" onclick="addStandardField('${f}')" style="font-size:12px;">+ ${OPTIONS_LABELS[f] || f}</button>`
+    ).join('');
+
     builder.innerHTML = fieldsHtml + `
       <div class="add-field-section" id="addFieldSection">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="showAddFieldForm()" style="font-size:13px;gap:6px;">
-          ＋ Adicionar Campo de Opções
-        </button>
+        <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;margin-top:4px;">Adicionar opções:</p>
+        ${availableStd.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">${stdChips}</div>` : ''}
+        <button type="button" class="btn btn-ghost btn-sm" onclick="showAddFieldForm()" style="font-size:12px;">+ Campo personalizado…</button>
         <div class="add-field-form" id="addFieldForm">
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Crie um campo personalizado (ex: Milímetros, Espessura, Cor, Metros, Acabamento especial…)</p>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Crie um campo à medida (ex: Milímetros, Espessura, Acabamento especial…)</p>
           <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
             <div class="form-group" style="flex:1;min-width:180px;margin-bottom:0;">
               <label style="font-size:12px;margin-bottom:4px;">Nome do Campo *</label>
@@ -668,6 +720,22 @@
       </div>`;
 
     activeFields.forEach(field => attachTagInputEvents(field));
+  }
+
+  function addStandardField(field) {
+    if (activeFields.includes(field)) return;
+    if (!tagInputsState[field]) {
+      tagInputsState[field] = editingId ? [] : [...(DEFAULT_OPTIONS[field] || [])];
+    }
+    fieldPriceModes[field] = fieldPriceModes[field] || getDefaultPriceMode(field);
+    activeFields.push(field);
+    const type = document.getElementById('pricingType').value;
+    buildOptionsEditor(type);
+    updateSimulator();
+    setTimeout(() => {
+      const input = document.getElementById(`tag_input_${field}`);
+      if (input) input.focus();
+    }, 50);
   }
 
   function buildTagInput(field, label, values) {
@@ -1001,7 +1069,6 @@
     const description = document.getElementById('description').value.trim();
     const pricingType = document.getElementById('pricingType').value;
     const startingPrice = parseFloat(document.getElementById('startingPrice').value);
-    const priceUnit = document.getElementById('priceUnit').value.trim();
     const imageVal = document.getElementById('image').value.trim();
     const active = document.getElementById('active').checked;
     const featured = document.getElementById('featured').checked;
@@ -1016,7 +1083,7 @@
     const optionLabels = {};
     activeFields.forEach(field => { if (customFieldLabels[field]) optionLabels[field] = customFieldLabels[field]; });
     const { optionPrices, fieldPriceModes: fieldPriceModesData } = collectOptionPrices();
-    const data = { name, category, subcategory, description, pricingType, startingPrice, priceUnit, image, active, featured, options, optionLabels, optionPrices, fieldPriceModes: fieldPriceModesData };
+    const data = { name, category, subcategory, description, pricingType, startingPrice, image, active, featured, options, optionLabels, optionPrices, fieldPriceModes: fieldPriceModesData };
 
     const saveBtn = document.getElementById('saveBtn');
     const status = document.getElementById('saveStatus');
@@ -1060,7 +1127,6 @@
     document.getElementById('description').value = p.description;
     document.getElementById('pricingType').value = p.pricingType;
     document.getElementById('startingPrice').value = p.startingPrice;
-    document.getElementById('priceUnit').value = p.priceUnit || '';
     document.getElementById('image').value = p.image || '';
     document.getElementById('active').checked = p.active;
     document.getElementById('featured').checked = p.featured;
