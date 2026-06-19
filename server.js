@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const mongoose = require('mongoose');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
+const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
 const path = require('path');
 const fs = require('fs');
 
@@ -395,6 +395,7 @@ app.delete('/api/emails/:id', requireAdmin, (req, res) => {
 // ── Stripe Payments ────────────────────────────
 app.post('/api/create-payment-intent', async (req, res) => {
   try {
+    if (!stripe) return res.status(503).json({ error: 'Pagamentos não configurados.' });
     const { amount, currency = 'eur', metadata = {} } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Montante inválido.' });
     const pi = await stripe.paymentIntents.create({
@@ -408,6 +409,7 @@ app.post('/api/create-payment-intent', async (req, res) => {
 
 app.post('/api/create-mbway-intent', async (req, res) => {
   try {
+    if (!stripe) return res.status(503).json({ error: 'Pagamentos não configurados.' });
     const { amount, phone, currency = 'eur', metadata = {} } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Montante inválido.' });
     if (!phone) return res.status(400).json({ error: 'Telefone obrigatório.' });
@@ -425,6 +427,7 @@ app.post('/api/create-mbway-intent', async (req, res) => {
 
 app.get('/api/payment-status/:id', async (req, res) => {
   try {
+    if (!stripe) return res.status(503).json({ error: 'Pagamentos não configurados.' });
     const pi = await stripe.paymentIntents.retrieve(req.params.id);
     res.json({ status: pi.status, id: pi.id });
   } catch (err) { res.status(500).json({ error: err.message }); }
