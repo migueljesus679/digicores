@@ -1133,13 +1133,6 @@
 
     previewImage();
 
-    // Show pricing type info (without triggering a full reset via onPricingTypeChange)
-    const infoEl = document.getElementById('pricingTypeInfo');
-    if (p.pricingType && PRICING_TYPE_INFO[p.pricingType]) {
-      infoEl.textContent = PRICING_TYPE_INFO[p.pricingType];
-      infoEl.style.display = 'block';
-    }
-
     // Restore saved option state
     customFieldLabels = p.optionLabels ? { ...p.optionLabels } : {};
     tagPricesState = {};
