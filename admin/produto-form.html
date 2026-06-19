@@ -625,9 +625,18 @@
       return;
     }
 
+    card.style.display = 'block';
+
     const scenarios = generateScenarios(type);
     if (!scenarios.length) {
-      card.style.display = 'none';
+      const minFields = MINIMUM_FIELDS[type] || [];
+      const missing = minFields
+        .filter(f => !(tagInputsState[f] || []).length)
+        .map(f => OPTIONS_LABELS[f] || f);
+      simContent.innerHTML = `
+        <p style="color:var(--text-muted);font-size:13px;padding:8px 0;">
+          Preencha <strong>${missing.join(' e ')}</strong> nas opções acima para ver a simulação.
+        </p>`;
       return;
     }
 
